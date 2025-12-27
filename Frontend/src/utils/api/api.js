@@ -63,6 +63,7 @@ export const multipleApi = async (endPointArr) => {
         method: eachEndPoint.method,
         url,
         headers: headers,
+        data: eachEndPoint.data,
       };
 
       try {
@@ -73,10 +74,11 @@ export const multipleApi = async (endPointArr) => {
       }
     } else {
       const url = `${BACKEND_BASE_URL}/${eachEndPoint.endPoint}`;
-      console.log(url)
+      console.log(url);
       const config = {
         method: eachEndPoint.method,
         url,
+        data: eachEndPoint.data,
       };
       try {
         const res = await axios(config);

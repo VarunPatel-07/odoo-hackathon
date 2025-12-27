@@ -3,7 +3,7 @@ import LoginPage from "./pages/auth/LoginPage.jsx";
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<LoginPage />} />
+      <Route path="/auth/sign-in" element={<LoginPage />} />
     </Routes>
   );
 }
