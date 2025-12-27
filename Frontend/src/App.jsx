@@ -7,6 +7,7 @@ import Layout from "./components/layout/Layout.jsx";
 import ConfigModule from "./pages/config/index.jsx";
 import { CONFIG_SIDEBAR_ITEMS } from "./constant/configModule.jsx";
 import MaintenanceRequest from "./pages/maintenance/index.jsx";
+import Profile from "./pages/Profile.jsx";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
       <Route path="/auth/register" element={<RegisterPage />} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="profile" element={<Profile />} />
     </Routes>
   );
 }

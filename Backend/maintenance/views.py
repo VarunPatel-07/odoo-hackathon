@@ -29,9 +29,9 @@ from .serializers import (
     MaintenanceTeamSerializer, EquipmentCategorySerializer,
     EquipmentSerializer, EquipmentListSerializer, EquipmentAutoFillSerializer,
     MaintenanceRequestSerializer, MaintenanceRequestListSerializer,
-    MaintenanceRequestStatusUpdateSerializer,
+    MaintenanceRequestStatusUpdateSerializer, RaiseMaintenanceRequestSerializer,
     MaintenanceLogSerializer, ScheduledMaintenanceSerializer,
-    CalendarEventSerializer, DashboardStatsSerializer
+    CalendarEventSerializer, DashboardStatsSerializer, ComprehensiveProfileSerializer
 )
 
 
@@ -258,6 +258,23 @@ class PasswordChangeView(APIView):
             'message': 'Password change failed',
             'data': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ComprehensiveProfileView(APIView):
+    """
+    Comprehensive profile view that returns role-specific data
+    Adapts to all user types: Employee, Vendor, Company Rep, Team Leader, Admin, etc.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get comprehensive profile with role-specific data"""
+        serializer = ComprehensiveProfileSerializer(request.user)
+        return Response({
+            'success': True,
+            'message': 'Comprehensive profile retrieved successfully',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
 
 
 class PasswordResetRequestView(APIView):
@@ -584,6 +601,8 @@ class MaintenanceRequestViewSet(viewsets.ModelViewSet):
             return MaintenanceRequestListSerializer
         if self.action == 'update_status':
             return MaintenanceRequestStatusUpdateSerializer
+        if self.action == 'raise_request':
+            return RaiseMaintenanceRequestSerializer
         return MaintenanceRequestSerializer
 
     def perform_create(self, serializer):
@@ -720,6 +739,26 @@ class MaintenanceRequestViewSet(viewsets.ModelViewSet):
         )
         
         return Response(MaintenanceRequestSerializer(maintenance_request).data)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def raise_request(self, request):
+        """
+        Simplified endpoint for users to raise maintenance requests.
+        Only requires equipment, name, description, request_type, and optional priority/scheduled_date.
+        Auto-populates work_center, company, and other fields from equipment.
+        """
+        serializer = RaiseMaintenanceRequestSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        maintenance_request = serializer.save()
+        
+        # Return full details of created request
+        return Response(
+            MaintenanceRequestSerializer(maintenance_request).data,
+            status=status.HTTP_201_CREATED
+        )
 
     @action(detail=False, methods=['get'])
     def overdue(self, request):
