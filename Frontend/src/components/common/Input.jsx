@@ -46,7 +46,7 @@ function Input({
           htmlFor=""
           className="pb-2.5 inline-block font-space-grotesk text-sm md:text-base lg:text-xl font-medium">
           <span className="flex gap-1">
-            <span>{label}</span>
+            <span className="text-black">{label}</span>
             {isRequiredField && <FaStarOfLife className="w-1.5 text-red-700" />}
           </span>
         </label>
