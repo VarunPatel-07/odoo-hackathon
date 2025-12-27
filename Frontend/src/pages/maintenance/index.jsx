@@ -1,8 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useContext } from "react";
 import { ReactSortable } from "react-sortablejs";
 import { multipleApi } from "../../utils/api/api";
 import { formateDate } from "../../utils/helper/helper";
-import { FiAlertCircle, FiCalendar, FiPackage, FiUser, FiClock, FiMoreVertical } from "react-icons/fi";
+import { FiAlertCircle, FiCalendar, FiPackage, FiUser, FiClock, FiMoreVertical, FiPlus } from "react-icons/fi";
+import { NotificationContext } from "../../context/notification/NotificationContextApi";
+import CreateRequestModal from "./CreateRequestModal";
+
 
 /* ================= CONSTANTS ================= */
 const STATUS_COLUMNS = {
@@ -12,12 +15,14 @@ const STATUS_COLUMNS = {
   scrap: "Scrapped",
 };
 
+
 const COLUMN_STYLES = {
   new: "bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200",
   in_progress: "bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200",
   repaired: "bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200",
   scrap: "bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200",
 };
+
 
 const COLUMN_ICONS = {
   new: "📥",
@@ -26,12 +31,14 @@ const COLUMN_ICONS = {
   scrap: "🗑️",
 };
 
+
 const PRIORITY_CONFIG = {
   1: { label: "Low", color: "text-slate-700", bg: "bg-slate-100", border: "border-slate-200" },
   2: { label: "Medium", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200" },
   3: { label: "High", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200" },
   4: { label: "Critical", color: "text-red-700", bg: "bg-red-50", border: "border-red-200" },
 };
+
 
 const REQUEST_TYPE_CONFIG = {
   preventive: {
@@ -51,7 +58,12 @@ const REQUEST_TYPE_CONFIG = {
   emergency: { label: "Emergency", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-200", icon: "🚨" },
 };
 
+
 /* ================= API FUNCTIONS ================= */
+
+/**
+ * UPDATE REQUEST STATUS - Your existing function (no changes)
+ */
 const updateRequestStatus = async (taskId, currentStatus, newStatus) => {
   try {
     const response = await multipleApi([
@@ -70,8 +82,33 @@ const updateRequestStatus = async (taskId, currentStatus, newStatus) => {
   }
 };
 
+/**
+ * CREATE NEW REQUEST - NEW API FUNCTION
+ * API Endpoint: POST /api/requests/raise-request/
+ */
+const createNewRequest = async (requestData) => {
+  try {
+    const response = await multipleApi([
+      {
+        endPoint: "requests/raise-request/",
+        protected: true,
+        method: "POST",
+        data: requestData,
+      },
+    ]);
+
+    return response[0];
+  } catch (error) {
+    console.error("❌ Failed to create request:", error);
+    throw error;
+  }
+};
+
+
 /* ================= COMPONENT ================= */
 export default function KanbanBoard() {
+  const { handelNotification } = useContext(NotificationContext); // ADDED: Notification context
+
   const [tasks, setTasks] = useState({
     new: [],
     in_progress: [],
@@ -82,13 +119,18 @@ export default function KanbanBoard() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // NEW STATE: Modal control
+  const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   console.log(isDragging);
   const dragMeta = useRef({
     taskId: null,
     fromStatus: null,
   });
 
-  /* ================= FETCH DATA ================= */
+
+  /* ================= FETCH DATA - Your existing function (no changes) ================= */
   useEffect(() => {
     fetchRequests();
   }, []);
@@ -118,7 +160,8 @@ export default function KanbanBoard() {
     }
   };
 
-  /* ================= HANDLE DRAG & DROP ================= */
+
+  /* ================= HANDLE DRAG & DROP - Your existing functions (no changes) ================= */
   const handleDragStart = (evt) => {
     setIsDragging(true);
     const taskId = evt.item.dataset.id;
@@ -157,6 +200,43 @@ export default function KanbanBoard() {
     setTasks((prev) => ({ ...prev, [status]: list }));
   };
 
+  /* ================= NEW: HANDLE FORM SUBMISSION ================= */
+  /**
+   * HANDLE FORM SUBMISSION FROM MODAL
+   * Receives form data from modal component and creates request
+   */
+  const handleFormSubmit = async (formData) => {
+    setIsSubmitting(true);
+
+    try {
+      const response = await createNewRequest(formData);
+      console.log("Create Request Response:", response);
+
+      if (response?.success) {
+        handelNotification({
+          success: true,
+          message: "Maintenance request created successfully!",
+        });
+        setShowModal(false);
+        fetchRequests(); // Refresh the board
+      } else {
+        handelNotification({
+          success: false,
+          message: response?.message || "Failed to create request. Please try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating request:", error);
+      handelNotification({
+        success: false,
+        message: "An error occurred while creating the request.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {/* Header */}
@@ -174,6 +254,15 @@ export default function KanbanBoard() {
                   {Object.values(tasks).reduce((acc, arr) => acc + arr.length, 0)}
                 </span>
               </div>
+
+              {/* NEW: CREATE REQUEST BUTTON */}
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg shadow-sm transition-colors duration-200"
+              >
+                <FiPlus className="w-4 h-4" />
+                <span>Create Request</span>
+              </button>
             </div>
           </div>
         </div>
@@ -354,6 +443,14 @@ export default function KanbanBoard() {
           </div>
         </div>
       )}
+
+      {/* NEW: CREATE REQUEST MODAL COMPONENT */}
+      <CreateRequestModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleFormSubmit}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }

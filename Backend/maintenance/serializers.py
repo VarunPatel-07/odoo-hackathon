@@ -8,6 +8,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from datetime import timedelta
 from .models import (
     Company, Department, Vendor, Employee, WorkCenter,
     MaintenanceTeam, EquipmentCategory, Equipment, 
@@ -593,18 +594,33 @@ class MaintenanceRequestSerializer(serializers.ModelSerializer):
 
 class MaintenanceRequestStatusUpdateSerializer(serializers.Serializer):
     """Serializer for updating maintenance request status"""
-    status = serializers.ChoiceField(choices=MaintenanceRequest.STATUS_CHOICES)
+    current_status = serializers.ChoiceField(choices=MaintenanceRequest.STATUS_CHOICES, required=False)
+    new_status = serializers.ChoiceField(choices=MaintenanceRequest.STATUS_CHOICES)
     duration = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, allow_null=True)
     notes = serializers.CharField(required=False, allow_blank=True)
+    
+    # Keep backward compatibility
+    status = serializers.ChoiceField(choices=MaintenanceRequest.STATUS_CHOICES, required=False, write_only=True)
 
     def validate(self, attrs):
-        status = attrs.get('status')
+        # Handle backward compatibility - if 'status' is provided, use it as 'new_status'
+        if 'status' in attrs and 'new_status' not in attrs:
+            attrs['new_status'] = attrs['status']
+        
+        new_status = attrs.get('new_status')
+        current_status = attrs.get('current_status')
         duration = attrs.get('duration')
         
-        if status == 'repaired' and not duration:
-            raise serializers.ValidationError({
-                'duration': 'Duration is required when marking as repaired.'
-            })
+        # Duration is optional when marking as repaired - will be auto-calculated if not provided
+        # if new_status == 'repaired' and not duration:
+        #     raise serializers.ValidationError({
+        #         'duration': 'Duration is required when marking as repaired.'
+        #     })
+        
+        # Validate current_status if provided
+        if current_status:
+            # This will be validated in the view against actual current status
+            attrs['_validate_current_status'] = True
         
         return attrs
 
@@ -612,41 +628,95 @@ class MaintenanceRequestStatusUpdateSerializer(serializers.Serializer):
 class RaiseMaintenanceRequestSerializer(serializers.ModelSerializer):
     """Simplified serializer for users to raise maintenance requests"""
     
+    # Optional fields that user can add
+    equipment = serializers.PrimaryKeyRelatedField(
+        queryset=Equipment.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    work_center = serializers.PrimaryKeyRelatedField(
+        queryset=WorkCenter.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    maintenance_team = serializers.PrimaryKeyRelatedField(
+        queryset=MaintenanceTeam.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    assigned_to = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    
     class Meta:
         model = MaintenanceRequest
         fields = [
-            'equipment',
             'name',
             'description',
             'request_type',
             'priority',
-            'scheduled_date'
+            'equipment',
+            'work_center',
+            'maintenance_team',
+            'assigned_to'
         ]
     
     def validate_equipment(self, value):
         """Ensure equipment exists and is active"""
-        if not value.is_active:
+        if value and not value.is_active:
             raise serializers.ValidationError("Cannot create a request for inactive equipment.")
         return value
+    
+    def validate(self, attrs):
+        """Validate that at least equipment or work_center is provided"""
+        if not attrs.get('equipment') and not attrs.get('work_center'):
+            raise serializers.ValidationError(
+                "Either 'equipment' or 'work_center' must be specified."
+            )
+        return attrs
     
     def create(self, validated_data):
         """Create maintenance request with auto-populated fields"""
         request = self.context.get('request')
         user = request.user if request else None
         
-        # Auto-populate fields from equipment
-        equipment = validated_data['equipment']
+        # Auto-populate fields
         validated_data['created_by'] = user
-        validated_data['work_center'] = equipment.work_center
-        validated_data['equipment_category'] = equipment.category
-        validated_data['company'] = equipment.company
         validated_data['request_date'] = timezone.now().date()
         validated_data['status'] = 'new'
         
-        # Determine priority color
-        priority = validated_data.get('priority', 'low')
-        color_map = {'low': 'green', 'medium': 'yellow', 'high': 'red'}
-        validated_data['color'] = color_map.get(priority, 'green')
+        # Automatically set scheduled_date to 24 hours from now
+        validated_data['scheduled_date'] = timezone.now() + timedelta(hours=24)
+        
+        # Auto-populate from equipment if provided
+        equipment = validated_data.get('equipment')
+        if equipment:
+            if not validated_data.get('work_center'):
+                validated_data['work_center'] = equipment.work_center
+            if not validated_data.get('equipment_category'):
+                validated_data['equipment_category'] = equipment.category
+            if not validated_data.get('company'):
+                validated_data['company'] = equipment.company
+            if not validated_data.get('maintenance_team'):
+                validated_data['maintenance_team'] = equipment.maintenance_team
+        
+        # Auto-populate from work_center if provided
+        work_center = validated_data.get('work_center')
+        if work_center and not validated_data.get('company'):
+            validated_data['company'] = work_center.company
+        
+        # Set color based on priority
+        priority = validated_data.get('priority', 0)
+        if priority >= 4:
+            validated_data['color'] = 1  # Red for critical
+        elif priority >= 3:
+            validated_data['color'] = 2  # Orange for high
+        elif priority >= 2:
+            validated_data['color'] = 3  # Yellow for medium
+        else:
+            validated_data['color'] = 4  # Green for low
         
         # Create the request
         maintenance_request = MaintenanceRequest.objects.create(**validated_data)
@@ -657,7 +727,7 @@ class RaiseMaintenanceRequestSerializer(serializers.ModelSerializer):
             user=user,
             action='Created',
             new_status='new',
-            notes=f"Maintenance request created by {user.get_full_name() or user.username}"
+            notes=f"Maintenance request created by {user.get_full_name() or user.username if user else 'System'}"
         )
         
         return maintenance_request

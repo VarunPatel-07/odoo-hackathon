@@ -631,10 +631,16 @@ class MaintenanceRequestViewSet(viewsets.ModelViewSet):
                 notes=f"Status changed from {old_status} to {instance.status}"
             )
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post', 'patch'])
     def update_status(self, request, pk=None):
         """
         Update the status of a maintenance request with proper workflow validation.
+        
+        Accepts:
+        - new_status (required): The new status to set
+        - current_status (optional): Current status for validation
+        - duration (optional): Required if new_status is 'repaired'
+        - notes (optional): Additional notes for the status change
         """
         maintenance_request = self.get_object()
         old_status = maintenance_request.status
@@ -642,16 +648,49 @@ class MaintenanceRequestViewSet(viewsets.ModelViewSet):
         serializer = MaintenanceRequestStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        new_status = serializer.validated_data['status']
+        # Validate current_status if provided
+        current_status = serializer.validated_data.get('current_status')
+        if current_status and current_status != old_status:
+            return Response({
+                'success': False,
+                'message': f'Status mismatch. Current status is "{old_status}", but you provided "{current_status}".',
+                'data': {
+                    'expected_current_status': old_status,
+                    'provided_current_status': current_status,
+                    'actual_current_status': old_status
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        new_status = serializer.validated_data['new_status']
         duration = serializer.validated_data.get('duration')
         notes = serializer.validated_data.get('notes', '')
         
         # Update the request
         maintenance_request.status = new_status
-        if duration:
-            maintenance_request.duration = duration
+        
+        # Auto-calculate duration and set completion_date when marking as repaired
         if new_status == 'repaired':
             maintenance_request.completion_date = timezone.now().date()
+            
+            # Auto-calculate duration if not provided
+            if not duration:
+                # Calculate duration from request_date or scheduled_date to completion_date
+                start_date = maintenance_request.scheduled_date or timezone.now()
+                if isinstance(start_date, timezone.datetime):
+                    start_datetime = start_date
+                else:
+                    start_datetime = timezone.datetime.combine(start_date, timezone.datetime.min.time())
+                
+                completion_datetime = timezone.now()
+                time_diff = completion_datetime - start_datetime
+                
+                # Convert to hours
+                duration = round(time_diff.total_seconds() / 3600, 2)
+            
+            maintenance_request.duration = duration
+        elif duration:
+            # If duration is provided for other statuses, just update it
+            maintenance_request.duration = duration
         
         maintenance_request.save()
         
@@ -662,10 +701,42 @@ class MaintenanceRequestViewSet(viewsets.ModelViewSet):
             action='Status Changed',
             old_status=old_status,
             new_status=new_status,
-            notes=notes
+            notes=notes or f"Status changed from {old_status} to {new_status}"
         )
         
-        return Response(MaintenanceRequestSerializer(maintenance_request).data)
+        return Response({
+            'success': True,
+            'message': f'Status updated successfully from "{old_status}" to "{new_status}"',
+            'data': MaintenanceRequestSerializer(maintenance_request).data
+        })
+
+    @action(detail=False, methods=['get'])
+    def status_counts(self, request):
+        """
+        Get count of maintenance requests by status
+        
+        Returns:
+        - new: Count of new requests
+        - in_progress: Count of in-progress requests
+        - repaired: Count of completed/repaired requests
+        - scrap: Count of scrapped requests
+        - total: Total count of all requests
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        counts = {
+            'new': queryset.filter(status='new').count(),
+            'in_progress': queryset.filter(status='in_progress').count(),
+            'repaired': queryset.filter(status='repaired').count(),
+            'scrap': queryset.filter(status='scrap').count(),
+        }
+        counts['total'] = sum(counts.values())
+        
+        return Response({
+            'success': True,
+            'message': 'Status counts retrieved successfully',
+            'data': counts
+        })
 
     @action(detail=True, methods=['post'])
     def assign(self, request, pk=None):
