@@ -14,6 +14,10 @@ function App() {
     <Routes>
       {/* ==================== AUTH ROUTES (No Sidebar) ==================== */}
       <Route path="/auth/sign-in" element={<LoginPage />} />
+      <Route path="/auth/register" element={<RegisterPage />} />
+
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="profile" element={<Profile />} />
       <Route element={<ProtectedRoutes />}>
         <Route element={<Layout />}>
           <Route path="dashboard" element={<Dashboard />} />
@@ -27,10 +31,6 @@ function App() {
           </Route>
         </Route>
       </Route>
-      <Route path="/auth/register" element={<RegisterPage />} />
-
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      <Route path="profile" element={<Profile />} />
     </Routes>
   );
 }
