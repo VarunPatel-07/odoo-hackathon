@@ -24,12 +24,7 @@ const getCookieConfig = () => {
     sameSite: "Strict",
     path: "/",
     ...(isProd && {
-      domain:
-        VITE_ENVIRONMENT === "PRODUCTION"
-          ? "app.orbitrms.com"
-          : VITE_ENVIRONMENT === "BETA-STAGING"
-          ? "beta-staging.orbitrms.com"
-          : "localhost",
+      domain: "localhost",
     }),
   };
 };
@@ -157,11 +152,7 @@ export const clearLocalSessionStorage = () => {
   });
 };
 
-export const storeDataInSessionStorage = (
-  _data,
-  key,
-  encrypted = VITE_ENVIRONMENT == "PRODUCTION" ? true : false
-) => {
+export const storeDataInSessionStorage = (_data, key, encrypted = VITE_ENVIRONMENT == "PRODUCTION" ? true : false) => {
   if (!key) {
     console.error("the key is required to store the data");
     return;

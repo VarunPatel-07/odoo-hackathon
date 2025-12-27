@@ -1,5 +1,7 @@
 import { Route, Routes, Navigate } from "react-router-dom";
 import LoginPage from "./pages/auth/LoginPage.jsx";
+import Dashboard from "./pages/dashboard/index.jsx";
+import ProtectedRoutes from "./layout/ProtectedRoutes.jsx";
 import RegisterPage from "./pages/auth/RegisterPage.jsx";
 import Layout from "./components/layout/Layout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -19,6 +21,9 @@ function App() {
     <Routes>
       {/* ==================== AUTH ROUTES (No Sidebar) ==================== */}
       <Route path="/auth/sign-in" element={<LoginPage />} />
+      <Route element={<ProtectedRoutes />}>
+        <Route path="/" element={<Dashboard />} />
+      </Route>
       <Route path="/auth/register" element={<RegisterPage />} />
 
       {/* ==================== PROTECTED ROUTES (With Sidebar Layout) ==================== */}
