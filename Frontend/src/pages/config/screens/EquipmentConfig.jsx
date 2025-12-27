@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import Table from "../../../components/common/Table";
 import { multipleApi } from "../../../utils/api/api";
 import { NotificationContext } from "../../../context/notification/NotificationContextApi";
+import TableSkeletonLoader from "../../../components/loader/TableSkeletonLoader";
 
 function EquipmentConfig() {
   const { handelNotification } = useContext(NotificationContext);
@@ -75,7 +76,11 @@ function EquipmentConfig() {
   ];
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64">{/* <Loader /> */}</div>;
+    return (
+      <div className="w-full">
+        <TableSkeletonLoader tableHeaderCount={5} tableValueCount={13} />
+      </div>
+    );
   }
 
   return (
