@@ -1,8 +1,7 @@
 // src/components/LoginPage.jsx
 import { useState } from "react";
-import Input from "../common/Input";
-import Button from "../common/Button";
-import { login } from "../api/auth";
+import Input from "../../components/common/Input";
+import Button from "../../components/common/Button";
 
 // Main login page with left illustration and right form
 function LoginPage() {
