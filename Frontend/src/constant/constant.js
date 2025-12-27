@@ -7,6 +7,8 @@ export const ERROR_MESSAGES = {
   REQUIRED_FIELD: "This is an required field",
   VALID_EMAIL: "Please enter a valid email",
   STRONG_PASSWORD: "Please enter a strong password",
+  MIN_PASSWORD_LENGTH: "Password must be at least 8 characters",
+  PASSWORD_MISMATCH: "Passwords do not match",
 };
 
 export const AUTH_PAGE_PATH = "/auth/sign-in";
@@ -18,6 +20,7 @@ export const getEnterAnimationClass = {
   "bottom-left": "animate-enter-bottom-left",
   center: "animate-enter-center",
 };
+
 export const getExitAnimationClass = {
   "top-right": "animate-exit-top-right",
   "top-left": "animate-exit-top-left",
