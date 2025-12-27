@@ -3,7 +3,7 @@ import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 
 import { useContext, useState } from "react";
-import { isValidEmail } from "../../utils/helper/helper";
+import { isValidEmail, storeDataInSecureCookie } from "../../utils/helper/helper";
 import { ERROR_MESSAGES } from "../../constant/constant";
 import { multipleApi } from "../../utils/api/api";
 import { NotificationContext } from "../../context/notification/NotificationContextApi";
@@ -53,6 +53,7 @@ function LoginPage() {
 
     if (res?.success) {
       navigate("/");
+      storeDataInSecureCookie(res?.data?.token, "authenticationToken", true);
     } else {
       handelNotification(res);
     }

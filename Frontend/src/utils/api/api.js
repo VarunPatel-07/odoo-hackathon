@@ -45,7 +45,7 @@ const multipleFetchApiErrorHandler = (error) => {
 export const multipleApi = async (endPointArr) => {
   const promises = endPointArr.map(async (eachEndPoint) => {
     if (eachEndPoint.protected) {
-      const authToken = `Bearer ${getDataFromSecureCookie("authenticationToken")}`;
+      const authToken = `Token ${getDataFromSecureCookie("authenticationToken")}`;
 
       const headers = eachEndPoint?.header
         ? eachEndPoint.header
