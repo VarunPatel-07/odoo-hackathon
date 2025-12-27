@@ -42,9 +42,7 @@ function Input({
   return (
     <div className="w-full h-fit">
       {label && (
-        <label
-          htmlFor=""
-          className="pb-2.5 inline-block font-space-grotesk text-sm md:text-base lg:text-xl font-medium">
+        <label htmlFor="" className="pb-2.5 inline-block font-space-grotesk text-sm font-medium">
           <span className="flex gap-1">
             <span className="text-black">{label}</span>
             {isRequiredField && <FaStarOfLife className="w-1.5 text-red-700" />}
@@ -67,7 +65,7 @@ function Input({
         )}
         <div
           className={clsx(
-            "bg-transparent  w-full relative focus-within:border-black/80 font-inter overflow-hidden !text-black",
+            "bg-transparent  w-full relative focus-within:border-black font-inter overflow-hidden text-black!",
             className
           )}
           style={{
@@ -80,7 +78,7 @@ function Input({
             placeholder={placeHolder}
             className={twMerge(
               clsx(
-                "border border-gray-500  px-7 py-3 bg-white w-full  text-black focus:outline-none focus:ring-1 focus:ring-offset-0 focus:ring-[#191A23] font-space-grotesk text-sm md:text-lg !border-none placeholder:text-gray-500 disabled:bg-[#7fab98]/15 disabled:border disabled:border-[#7fab98] disabled:cursor-not-allowed",
+                "border border-gray-500  px-7 py-3 bg-white w-full  text-black focus:outline-none focus:ring-0 focus:ring-offset-0  font-space-grotesk text-sm md:text-lg border-none! placeholder:text-gray-500 disabled:bg-[#7fab98]/15 disabled:border disabled:border-[#7fab98] disabled:cursor-not-allowed",
                 className
               )
             )}
