@@ -16,8 +16,47 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+
+@api_view(['GET'])
+def api_root(request):
+    """API root endpoint with available endpoints"""
+    return Response({
+        'message': 'Welcome to GearGuard Maintenance Tracker API',
+        'version': '1.0.0',
+        'endpoints': {
+            'admin': '/admin/',
+            'api': '/api/',
+            'users': '/api/users/',
+            'companies': '/api/companies/',
+            'vendors': '/api/vendors/',
+            'departments': '/api/departments/',
+            'employees': '/api/employees/',
+            'workcenters': '/api/workcenters/',
+            'teams': '/api/teams/',
+            'categories': '/api/categories/',
+            'equipment': '/api/equipment/',
+            'requests': '/api/requests/',
+            'scheduled': '/api/scheduled/',
+            'dashboard': '/api/dashboard/',
+            'calendar': '/api/calendar/',
+        }
+    })
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/", include("maintenance.urls")),
+    path("", api_root, name="api-root"),
+    # DRF browsable API auth
+    path("api-auth/", include("rest_framework.urls")),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
