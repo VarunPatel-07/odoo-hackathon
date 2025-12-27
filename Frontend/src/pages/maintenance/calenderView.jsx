@@ -19,9 +19,9 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-export default function MaintenanceCalendar() {
+export default function CalendarViewBoard({ setShowModal, setLoading }) {
   const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+
   const [view, setView] = useState("month");
 
   const fetchPreventiveRequests = async () => {
@@ -58,13 +58,8 @@ export default function MaintenanceCalendar() {
     fetchPreventiveRequests();
   }, []);
 
-  const handleSelectSlot = (slotInfo) => {
-    const dateStr = format(slotInfo.start, "yyyy-MM-dd");
-    const taskName = prompt(`Enter maintenance request name for ${dateStr}:`);
-    if (taskName) {
-      console.log("New Maintenance Request:", taskName, "Date:", dateStr);
-      fetchPreventiveRequests();
-    }
+  const handleSelectSlot = () => {
+    setShowModal(true); // open modal
   };
 
   const eventStyleGetter = () => {
@@ -82,150 +77,10 @@ export default function MaintenanceCalendar() {
     };
   };
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom right, #f8fafc, #dbeafe, #f8fafc)" }}>
-        <div
-          style={{
-            backgroundColor: "white",
-            borderBottom: "1px solid #e2e8f0",
-            boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
-          }}>
-          <div style={{ maxWidth: "1600px", margin: "0 auto", padding: "20px 24px" }}>
-            <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#0f172a", marginBottom: "4px" }}>
-              Maintenance Calendar
-            </h1>
-            <p style={{ fontSize: "14px", color: "#64748b" }}>Schedule and track preventive maintenance</p>
-          </div>
-        </div>
-
-        <div style={{ maxWidth: "1600px", margin: "0 auto", padding: "32px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "600px" }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ position: "relative", width: "96px", height: "96px", margin: "0 auto 24px" }}>
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    border: "4px solid #bfdbfe",
-                    borderRadius: "50%",
-                    animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
-                    opacity: 0.75,
-                  }}></div>
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: "8px",
-                    border: "4px solid #60a5fa",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
-                    borderTopColor: "transparent",
-                  }}></div>
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: "16px",
-                    border: "4px solid #2563eb",
-                    borderRadius: "50%",
-                    animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                  }}></div>
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}>
-                  <div
-                    style={{
-                      width: "16px",
-                      height: "16px",
-                      backgroundColor: "#2563eb",
-                      borderRadius: "50%",
-                      animation: "bounce 1s infinite",
-                    }}></div>
-                </div>
-              </div>
-              <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#334155", marginBottom: "8px" }}>
-                Loading Calendar
-              </h3>
-              <p style={{ fontSize: "14px", color: "#64748b" }}>Fetching maintenance schedule...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className="w-full max-h-[calc(100vh-0px)] overflow-auto"
       style={{ background: "linear-gradient(to bottom right, #f8fafc, #dbeafe, #f8fafc)" }}>
-      {/* Header */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderBottom: "1px solid #e2e8f0",
-          boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
-        }}>
-        <div style={{ maxWidth: "1600px", margin: "0 auto", padding: "20px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#0f172a", marginBottom: "4px" }}>
-                Maintenance Calendar
-              </h1>
-              <p style={{ fontSize: "14px", color: "#64748b" }}>Schedule and track preventive maintenance</p>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <button
-                onClick={fetchPreventiveRequests}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 16px",
-                  backgroundColor: "#f1f5f9",
-                  color: "#334155",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  cursor: "pointer",
-                  boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
-                  transition: "background-color 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e2e8f0")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}>
-                <FiRefreshCw style={{ width: "16px", height: "16px" }} />
-                <span>Refresh</span>
-              </button>
-              <button
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 16px",
-                  backgroundColor: "#2563eb",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  cursor: "pointer",
-                  boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
-                  transition: "background-color 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1d4ed8")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#2563eb")}>
-                <FiPlus style={{ width: "16px", height: "16px" }} />
-                <span>New Request</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div style={{ maxWidth: "1600px", margin: "0 auto", padding: "32px 24px" }}>
         {/* Stats Bar */}

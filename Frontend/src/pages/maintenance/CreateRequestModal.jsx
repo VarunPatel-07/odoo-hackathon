@@ -1,27 +1,6 @@
 import { useState } from "react";
 import { FiX, FiPlus } from "react-icons/fi";
 
-/**
- * CREATE REQUEST MODAL COMPONENT
- * 
- * Reusable modal for creating new maintenance requests
- * 
- * Props:
- * @param {boolean} isOpen - Controls modal visibility
- * @param {function} onClose - Callback to close modal
- * @param {function} onSubmit - Callback with form data when submitted
- * @param {boolean} isSubmitting - Shows loading state on submit button
- * 
- * API Data Format:
- * {
- *   name: string,
- *   description: string,
- *   request_type: "preventive" | "corrective",
- *   priority: 1 | 2 | 3 | 4,
- *   equipment: number
- * }
- */
-
 const REQUEST_TYPE_CONFIG = {
   preventive: {
     label: "Preventive",
@@ -166,8 +145,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit, isSubmit
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
-          >
+            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50">
             <FiX className="w-5 h-5 text-slate-500" />
           </button>
         </div>
@@ -188,13 +166,11 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit, isSubmit
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="e.g., Fix Machine A cooling system"
                   disabled={isSubmitting}
-                  className={`w-full px-3 py-2 text-sm border ${
+                  className={`w-full px-3 py-2 text-sm border text-black ${
                     showError && formErrors.name ? "border-red-300" : "border-slate-300"
                   } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed`}
                 />
-                {showError && formErrors.name && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>
-                )}
+                {showError && formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
               </div>
 
               {/* Equipment ID */}
@@ -208,7 +184,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit, isSubmit
                   onChange={(e) => handleInputChange("equipment", parseInt(e.target.value) || "")}
                   placeholder="Enter equipment ID"
                   disabled={isSubmitting}
-                  className={`w-full px-3 py-2 text-sm border ${
+                  className={`w-full px-3 py-2 text-sm border text-black ${
                     showError && formErrors.equipment ? "border-red-300" : "border-slate-300"
                   } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed`}
                 />
@@ -228,7 +204,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit, isSubmit
                   placeholder="Describe the issue in detail..."
                   rows={5}
                   disabled={isSubmitting}
-                  className={`w-full px-3 py-2 text-sm border ${
+                  className={`w-full px-3 py-2 text-sm border text-black ${
                     showError && formErrors.description ? "border-red-300" : "border-slate-300"
                   } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-slate-50 disabled:cursor-not-allowed`}
                 />
@@ -256,8 +232,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit, isSubmit
                         formData.request_type === key
                           ? `${config.border} ${config.bg} ${config.color} shadow-sm`
                           : "border-slate-200 hover:border-slate-300 text-slate-600"
-                      }`}
-                    >
+                      }`}>
                       <div className="text-xl mb-1">{config.icon}</div>
                       <div className="text-xs font-medium">{config.label}</div>
                     </button>
@@ -281,8 +256,7 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit, isSubmit
                         formData.priority === parseInt(key)
                           ? `${config.border} ${config.bg} ${config.color} shadow-sm`
                           : "border-slate-200 hover:border-slate-300 text-slate-600"
-                      }`}
-                    >
+                      }`}>
                       <div className="text-xs font-medium">{config.label}</div>
                     </button>
                   ))}
@@ -312,15 +286,13 @@ export default function CreateRequestModal({ isOpen, onClose, onSubmit, isSubmit
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-            >
+              className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

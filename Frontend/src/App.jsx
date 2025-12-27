@@ -6,9 +6,9 @@ import RegisterPage from "./pages/auth/RegisterPage.jsx";
 import Layout from "./components/layout/Layout.jsx";
 import ConfigModule from "./pages/config/index.jsx";
 import { CONFIG_SIDEBAR_ITEMS } from "./constant/configModule.jsx";
-import MaintenanceRequest from "./pages/maintenance/index.jsx";
 import Profile from "./pages/profile/index.jsx";
 import MaintenanceCalendar from "./pages/maintenance/calenderView.jsx";
+import Maintenance from "./pages/maintenance/index.jsx";
 
 function App() {
   return (
@@ -24,7 +24,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="profile" element={<Profile />} />
 
-          <Route path="maintenance-request" element={<MaintenanceRequest />} />
+          <Route path="maintenance" element={<Maintenance />} />
           <Route path="maintenance-calender" element={<MaintenanceCalendar />} />
 
           <Route path="config" element={<ConfigModule />}>

@@ -17,7 +17,7 @@ const Sidebar = () => {
     {
       id: 2,
       name: "Maintenance Request",
-      path: "/maintenance-request",
+      path: "/maintenance",
       icon: FiTool,
       color: "emerald",
     },
