@@ -609,6 +609,60 @@ class MaintenanceRequestStatusUpdateSerializer(serializers.Serializer):
         return attrs
 
 
+class RaiseMaintenanceRequestSerializer(serializers.ModelSerializer):
+    """Simplified serializer for users to raise maintenance requests"""
+    
+    class Meta:
+        model = MaintenanceRequest
+        fields = [
+            'equipment',
+            'name',
+            'description',
+            'request_type',
+            'priority',
+            'scheduled_date'
+        ]
+    
+    def validate_equipment(self, value):
+        """Ensure equipment exists and is active"""
+        if not value.is_active:
+            raise serializers.ValidationError("Cannot create a request for inactive equipment.")
+        return value
+    
+    def create(self, validated_data):
+        """Create maintenance request with auto-populated fields"""
+        request = self.context.get('request')
+        user = request.user if request else None
+        
+        # Auto-populate fields from equipment
+        equipment = validated_data['equipment']
+        validated_data['created_by'] = user
+        validated_data['work_center'] = equipment.work_center
+        validated_data['equipment_category'] = equipment.category
+        validated_data['company'] = equipment.company
+        validated_data['request_date'] = timezone.now().date()
+        validated_data['status'] = 'new'
+        
+        # Determine priority color
+        priority = validated_data.get('priority', 'low')
+        color_map = {'low': 'green', 'medium': 'yellow', 'high': 'red'}
+        validated_data['color'] = color_map.get(priority, 'green')
+        
+        # Create the request
+        maintenance_request = MaintenanceRequest.objects.create(**validated_data)
+        
+        # Create log entry
+        MaintenanceLog.objects.create(
+            request=maintenance_request,
+            user=user,
+            action='Created',
+            new_status='new',
+            notes=f"Maintenance request created by {user.get_full_name() or user.username}"
+        )
+        
+        return maintenance_request
+
+
 class ScheduledMaintenanceSerializer(serializers.ModelSerializer):
     """Serializer for ScheduledMaintenance model"""
     equipment_name = serializers.CharField(source='equipment.name', read_only=True)
@@ -657,3 +711,307 @@ class DashboardStatsSerializer(serializers.Serializer):
     overdue_requests = serializers.IntegerField()
     completed_this_month = serializers.IntegerField()
     upcoming_scheduled = serializers.IntegerField()
+
+
+class ComprehensiveProfileSerializer(serializers.Serializer):
+    """
+    Comprehensive profile serializer that adapts to all user types.
+    Returns role-specific data based on user type.
+    """
+    # Universal fields
+    user_info = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
+    primary_role = serializers.SerializerMethodField()
+    
+    # Role-specific fields
+    employee_stats = serializers.SerializerMethodField()
+    vendor_info = serializers.SerializerMethodField()
+    company_info = serializers.SerializerMethodField()
+    leadership_info = serializers.SerializerMethodField()
+    maintenance_stats = serializers.SerializerMethodField()
+    admin_stats = serializers.SerializerMethodField()
+    
+    # Recent activity
+    recent_activities = serializers.SerializerMethodField()
+
+    def get_user_info(self, obj):
+        """Get basic user information"""
+        employee = getattr(obj, 'employee', None)
+        return {
+            'id': obj.id,
+            'username': obj.username,
+            'email': obj.email,
+            'first_name': obj.first_name,
+            'last_name': obj.last_name,
+            'full_name': obj.get_full_name() or obj.username,
+            'date_joined': obj.date_joined,
+            'last_login': obj.last_login,
+            'is_active': obj.is_active,
+            'profile_picture': employee.image.url if employee and employee.image else None,
+            'phone': employee.phone if employee else '',
+            'position': employee.position if employee else '',
+        }
+
+    def get_roles(self, obj):
+        """Detect all roles this user has"""
+        roles = []
+        
+        # Check employee
+        has_employee = hasattr(obj, 'employee') and obj.employee is not None
+        if has_employee:
+            roles.append('employee')
+        
+        # Check team membership
+        if obj.maintenance_teams.exists():
+            roles.append('team_member')
+        
+        # Check team leader
+        if obj.led_teams.exists():
+            roles.append('team_leader')
+        
+        # Check vendor relationship (user is contact for vendor)
+        vendor_equipment = Equipment.objects.filter(vendor__contact_person=obj.username).exists()
+        if vendor_equipment:
+            roles.append('vendor')
+        
+        # Check company representative (has employee with company)
+        if has_employee and obj.employee.department and obj.employee.department.company:
+            roles.append('company_rep')
+        
+        # Check admin/staff
+        if obj.is_staff:
+            roles.append('staff')
+        if obj.is_superuser:
+            roles.append('admin')
+        
+        return roles
+
+    def get_primary_role(self, obj):
+        """Determine the primary/dominant role"""
+        if obj.is_superuser:
+            return 'admin'
+        if obj.is_staff:
+            return 'staff'
+        if obj.led_teams.exists():
+            return 'team_leader'
+        if obj.maintenance_teams.exists():
+            return 'team_member'
+        if hasattr(obj, 'employee') and obj.employee:
+            return 'employee'
+        
+        # Check vendor
+        vendor_equipment = Equipment.objects.filter(vendor__contact_person=obj.username).exists()
+        if vendor_equipment:
+            return 'vendor'
+        
+        return 'user'
+
+    def get_employee_stats(self, obj):
+        """Get employee-specific statistics"""
+        if not hasattr(obj, 'employee') or not obj.employee:
+            return None
+        
+        employee = obj.employee
+        created_requests = MaintenanceRequest.objects.filter(created_by=obj)
+        assigned_requests = MaintenanceRequest.objects.filter(assigned_to=obj)
+        
+        return {
+            'employee_id': employee.id,
+            'name': employee.name,
+            'position': employee.position,
+            'department': {
+                'id': employee.department.id,
+                'name': employee.department.name,
+            } if employee.department else None,
+            'company': {
+                'id': employee.department.company.id,
+                'name': employee.department.company.name,
+            } if employee.department and employee.department.company else None,
+            'statistics': {
+                'requests_created': created_requests.count(),
+                'tasks_assigned': assigned_requests.count(),
+                'tasks_completed': assigned_requests.filter(status='repaired').count(),
+                'tasks_pending': assigned_requests.exclude(status__in=['repaired', 'scrap']).count(),
+            },
+            'assigned_equipment': Equipment.objects.filter(assigned_employee=employee).count(),
+        }
+
+    def get_vendor_info(self, obj):
+        """Get vendor-specific information"""
+        # Find vendor where user is the contact
+        vendor = Vendor.objects.filter(contact_person=obj.username).first()
+        if not vendor:
+            return None
+        
+        supplied_equipment = Equipment.objects.filter(vendor=vendor)
+        under_warranty = supplied_equipment.filter(warranty_expiry_date__gte=timezone.now().date())
+        related_requests = MaintenanceRequest.objects.filter(equipment__vendor=vendor)
+        
+        return {
+            'vendor_id': vendor.id,
+            'vendor_name': vendor.name,
+            'vendor_code': vendor.code,
+            'contact_person': vendor.contact_person,
+            'email': vendor.email,
+            'phone': vendor.phone,
+            'statistics': {
+                'total_equipment_supplied': supplied_equipment.count(),
+                'equipment_under_warranty': under_warranty.count(),
+                'active_equipment': supplied_equipment.filter(is_active=True).count(),
+                'service_requests': related_requests.count(),
+                'open_requests': related_requests.exclude(status__in=['repaired', 'scrap']).count(),
+            },
+            'equipment_portfolio': list(supplied_equipment.values(
+                'id', 'name', 'serial_number', 'is_active', 'warranty_expiry_date'
+            )[:10])  # Top 10
+        }
+
+    def get_company_info(self, obj):
+        """Get company representative information"""
+        if not hasattr(obj, 'employee') or not obj.employee:
+            return None
+        
+        employee = obj.employee
+        if not employee.department or not employee.department.company:
+            return None
+        
+        company = employee.department.company
+        company_equipment = Equipment.objects.filter(company=company)
+        company_requests = MaintenanceRequest.objects.filter(company=company)
+        
+        return {
+            'company_id': company.id,
+            'company_name': company.name,
+            'company_code': company.code,
+            'company_address': company.address,
+            'company_phone': company.phone,
+            'company_email': company.email,
+            'statistics': {
+                'total_departments': company.departments.count(),
+                'total_employees': Employee.objects.filter(department__company=company).count(),
+                'total_equipment': company_equipment.count(),
+                'active_equipment': company_equipment.filter(is_active=True).count(),
+                'work_centers': company.workcenters.count(),
+                'maintenance_requests': company_requests.count(),
+                'open_requests': company_requests.exclude(status__in=['repaired', 'scrap']).count(),
+            },
+            'departments': list(company.departments.values('id', 'name', 'description')[:10])
+        }
+
+    def get_leadership_info(self, obj):
+        """Get team leadership information"""
+        led_teams = obj.led_teams.all()
+        if not led_teams.exists():
+            return None
+        
+        teams_data = []
+        for team in led_teams:
+            team_requests = MaintenanceRequest.objects.filter(maintenance_team=team)
+            teams_data.append({
+                'team_id': team.id,
+                'team_name': team.name,
+                'description': team.description,
+                'member_count': team.members.count(),
+                'members': list(team.members.values('id', 'username', 'first_name', 'last_name')[:10]),
+                'statistics': {
+                    'total_requests': team_requests.count(),
+                    'open_requests': team_requests.exclude(status__in=['repaired', 'scrap']).count(),
+                    'completed_requests': team_requests.filter(status='repaired').count(),
+                },
+            })
+        
+        return {
+            'teams_led': teams_data,
+            'total_teams': len(teams_data),
+        }
+
+    def get_maintenance_stats(self, obj):
+        """Get maintenance team member statistics"""
+        teams = obj.maintenance_teams.all()
+        if not teams.exists():
+            return None
+        
+        assigned_equipment = Equipment.objects.filter(default_technician=obj)
+        work_orders = MaintenanceRequest.objects.filter(assigned_to=obj)
+        
+        teams_data = []
+        for team in teams:
+            teams_data.append({
+                'team_id': team.id,
+                'team_name': team.name,
+                'leader': team.leader.username if team.leader else None,
+            })
+        
+        return {
+            'teams': teams_data,
+            'statistics': {
+                'total_work_orders': work_orders.count(),
+                'completed_work_orders': work_orders.filter(status='repaired').count(),
+                'pending_work_orders': work_orders.exclude(status__in=['repaired', 'scrap']).count(),
+                'assigned_equipment': assigned_equipment.count(),
+            },
+            'assigned_equipment_list': list(assigned_equipment.values(
+                'id', 'name', 'serial_number', 'category__name'
+            )[:10])
+        }
+
+    def get_admin_stats(self, obj):
+        """Get admin/superuser statistics"""
+        if not (obj.is_staff or obj.is_superuser):
+            return None
+        
+        return {
+            'system_overview': {
+                'total_users': User.objects.count(),
+                'total_companies': Company.objects.count(),
+                'total_departments': Department.objects.count(),
+                'total_equipment': Equipment.objects.count(),
+                'total_requests': MaintenanceRequest.objects.count(),
+                'total_teams': MaintenanceTeam.objects.count(),
+            },
+            'recent_statistics': {
+                'users_this_month': User.objects.filter(
+                    date_joined__gte=timezone.now() - timedelta(days=30)
+                ).count(),
+                'requests_this_month': MaintenanceRequest.objects.filter(
+                    created_at__gte=timezone.now() - timedelta(days=30)
+                ).count(),
+            }
+        }
+
+    def get_recent_activities(self, obj):
+        """Get recent activities for the user"""
+        activities = []
+        
+        # Recent requests created
+        created_requests = MaintenanceRequest.objects.filter(
+            created_by=obj
+        ).order_by('-created_at')[:5]
+        
+        for req in created_requests:
+            activities.append({
+                'type': 'request_created',
+                'title': f"Created request: {req.name}",
+                'date': req.created_at,
+                'status': req.status,
+                'id': req.id,
+            })
+        
+        # Recent requests assigned
+        assigned_requests = MaintenanceRequest.objects.filter(
+            assigned_to=obj
+        ).order_by('-updated_at')[:5]
+        
+        for req in assigned_requests:
+            activities.append({
+                'type': 'request_assigned',
+                'title': f"Assigned to: {req.name}",
+                'date': req.updated_at,
+                'status': req.status,
+                'id': req.id,
+            })
+        
+        # Sort by date
+        activities.sort(key=lambda x: x['date'], reverse=True)
+        
+        return activities[:10]  # Return top 10 most recent

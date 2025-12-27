@@ -33,6 +33,7 @@ urlpatterns = [
     
     # User profile endpoints
     path('auth/profile/', views.UserProfileView.as_view(), name='profile'),
+    path('auth/profile/comprehensive/', views.ComprehensiveProfileView.as_view(), name='comprehensive-profile'),
     path('auth/maintenance-history/', views.UserMaintenanceHistoryView.as_view(), name='maintenance-history'),
     
     # API routes from router

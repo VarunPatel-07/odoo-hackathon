@@ -11,19 +11,24 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-)(fvw9u60e1=)0*g((0zl28dzn-*$yr=rmy#m!rrvs4$m@36lm"
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)(fvw9u60e1=)0*g((0zl28dzn-*$yr=rmy#m!rrvs4$m@36lm')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
@@ -241,15 +246,10 @@ SOCIALACCOUNT_PROVIDERS = {
             'access_type': 'online',
         },
         'APP': {
-            'client_id': '1089904550106-qrqdv62ngapejt5qr14allofejusp0cv.apps.googleusercontent.com',  # Add your Google Client ID here or use environment variable
-            'secret': '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',  # Add your Google Client Secret here or use environment variable
+            'client_id': os.getenv('GOOGLE_CLIENT_ID', ''),
+            'secret': os.getenv('GOOGLE_CLIENT_SECRET', ''),
             'key': ''
         },
         'VERIFIED_EMAIL': True,  # Trust Google's email verification
     }
 }
-
-# You can also use environment variables (recommended for production):
-# import os
-# SOCIALACCOUNT_PROVIDERS['google']['APP']['client_id'] = os.getenv('GOOGLE_CLIENT_ID', '')
-# SOCIALACCOUNT_PROVIDERS['google']['APP']['secret'] = os.getenv('GOOGLE_CLIENT_SECRET', '')
