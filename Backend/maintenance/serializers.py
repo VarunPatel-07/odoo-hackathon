@@ -1,9 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from django.utils import timezone
+from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
 from .models import (
     Company, Department, Vendor, Employee, WorkCenter,
     MaintenanceTeam, EquipmentCategory, Equipment, 
@@ -12,27 +16,47 @@ from .models import (
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User model"""
+    """Serializer for User model - read only"""
     full_name = serializers.SerializerMethodField()
+    employee_info = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name']
-        read_only_fields = ['id']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'employee_info', 'date_joined', 'last_login']
+        read_only_fields = ['id', 'date_joined', 'last_login']
 
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
+    
+    def get_employee_info(self, obj):
+        """Get associated employee information if exists"""
+        try:
+            from .models import Employee
+            employee = Employee.objects.filter(user=obj).first()
+            if employee:
+                return {
+                    'id': employee.id,
+                    'name': employee.name,
+                    'position': employee.position,
+                    'phone': employee.phone,
+                    'email': employee.email,
+                    'department': employee.department.name if employee.department else None,
+                    'image': employee.image.url if employee.image else None
+                }
+            return None
+        except Exception:
+            return None
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """Serializer for user registration"""
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
-    password_confirm = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
+    password2 = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'}, label='Confirm Password')
     email = serializers.EmailField(required=True)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
+        fields = ['username', 'email', 'password', 'password2', 'first_name', 'last_name']
         extra_kwargs = {
             'first_name': {'required': False},
             'last_name': {'required': False}
@@ -51,60 +75,90 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        """Check if passwords match"""
-        if attrs['password'] != attrs['password_confirm']:
+        """Validate passwords match and meet requirements"""
+        if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
+        
+        # Validate password strength
+        try:
+            validate_password(attrs['password'])
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"password": list(e.messages)})
+        
         return attrs
 
     def create(self, validated_data):
-        """Create user with encrypted password"""
-        validated_data.pop('password_confirm')
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', '')
-        )
+        validated_data.pop('password2')
+        user = User.objects.create_user(**validated_data)
         return user
 
 
-class UserLoginSerializer(serializers.Serializer):
-    """Serializer for user login"""
-    username = serializers.CharField(required=True)
-    password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for viewing and updating user profile"""
+    full_name = serializers.SerializerMethodField()
+    employee_info = serializers.SerializerMethodField()
+    total_maintenance_requests = serializers.SerializerMethodField()
+    completed_requests = serializers.SerializerMethodField()
+    pending_requests = serializers.SerializerMethodField()
 
-    def validate(self, attrs):
-        """Authenticate user credentials"""
-        username = attrs.get('username')
-        password = attrs.get('password')
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
+            'employee_info', 'date_joined', 'last_login',
+            'total_maintenance_requests', 'completed_requests', 'pending_requests'
+        ]
+        read_only_fields = ['id', 'username', 'date_joined', 'last_login']
 
-        if username and password:
-            user = authenticate(username=username, password=password)
-            if not user:
-                raise serializers.ValidationError(
-                    "Unable to log in with provided credentials.",
-                    code='authorization'
-                )
-            if not user.is_active:
-                raise serializers.ValidationError(
-                    "User account is disabled.",
-                    code='authorization'
-                )
-            attrs['user'] = user
-            return attrs
-        else:
-            raise serializers.ValidationError(
-                "Must include 'username' and 'password'.",
-                code='authorization'
-            )
+    def get_full_name(self, obj):
+        return obj.get_full_name() or obj.username
+    
+    def get_employee_info(self, obj):
+        """Get associated employee information if exists"""
+        try:
+            from .models import Employee
+            employee = Employee.objects.filter(user=obj).first()
+            if employee:
+                return {
+                    'id': employee.id,
+                    'name': employee.name,
+                    'position': employee.position,
+                    'department': employee.department.name if employee.department else None,
+                    'phone': employee.phone,
+                    'email': employee.email,
+                    'image': employee.image.url if employee.image else None
+                }
+            return None
+        except Exception as e:
+            return None
+    
+    def get_total_maintenance_requests(self, obj):
+        """Get total maintenance requests created by user"""
+        try:
+            return MaintenanceRequest.objects.filter(created_by=obj).count()
+        except Exception:
+            return 0
+    
+    def get_completed_requests(self, obj):
+        """Get completed maintenance requests"""
+        try:
+            return MaintenanceRequest.objects.filter(created_by=obj, status='repaired').count()
+        except Exception:
+            return 0
+    
+    def get_pending_requests(self, obj):
+        """Get pending maintenance requests"""
+        try:
+            return MaintenanceRequest.objects.filter(created_by=obj).exclude(status__in=['repaired', 'scrap']).count()
+        except Exception:
+            return 0
 
 
 class PasswordChangeSerializer(serializers.Serializer):
-    """Serializer for password change"""
-    old_password = serializers.CharField(required=True, write_only=True)
-    new_password = serializers.CharField(required=True, write_only=True, validators=[validate_password])
-    new_password_confirm = serializers.CharField(required=True, write_only=True)
+    """Serializer for changing password"""
+    old_password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
+    new_password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
+    new_password2 = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'}, label='Confirm New Password')
 
     def validate_old_password(self, value):
         """Check if old password is correct"""
@@ -114,78 +168,137 @@ class PasswordChangeSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
-        """Check if new passwords match"""
-        if attrs['new_password'] != attrs['new_password_confirm']:
-            raise serializers.ValidationError({"new_password": "Password fields didn't match."})
+        """Validate new passwords match and meet requirements"""
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError({"new_password": "New password fields didn't match."})
+        
+        # Validate password strength
+        try:
+            validate_password(attrs['new_password'], self.context['request'].user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"new_password": list(e.messages)})
+        
         return attrs
 
     def save(self):
-        """Update user password"""
         user = self.context['request'].user
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
-    """Serializer for user profile with full details"""
-    full_name = serializers.SerializerMethodField()
-    total_requests = serializers.SerializerMethodField()
-    pending_requests = serializers.SerializerMethodField()
-    completed_requests = serializers.SerializerMethodField()
-    maintenance_teams = serializers.SerializerMethodField()
-    employee_info = serializers.SerializerMethodField()
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Serializer for requesting password reset"""
+    email = serializers.EmailField(required=True)
 
-    class Meta:
-        model = User
-        fields = [
-            'id', 'username', 'email', 'first_name', 'last_name', 'full_name',
-            'date_joined', 'last_login', 'is_active', 'total_requests',
-            'pending_requests', 'completed_requests', 'maintenance_teams',
-            'employee_info'
-        ]
-        read_only_fields = ['id', 'username', 'date_joined', 'last_login', 'is_active']
-
-    def get_full_name(self, obj):
-        return obj.get_full_name() or obj.username
-
-    def get_total_requests(self, obj):
-        """Count total maintenance requests created by this user"""
-        return MaintenanceRequest.objects.filter(requested_by=obj).count()
-
-    def get_pending_requests(self, obj):
-        """Count pending maintenance requests"""
-        return MaintenanceRequest.objects.filter(
-            requested_by=obj,
-            status__in=['pending', 'in_progress']
-        ).count()
-
-    def get_completed_requests(self, obj):
-        """Count completed maintenance requests"""
-        return MaintenanceRequest.objects.filter(
-            requested_by=obj,
-            status='completed'
-        ).count()
-
-    def get_maintenance_teams(self, obj):
-        """Get teams where user is a member"""
-        teams = obj.maintenance_teams.all()
-        return [{'id': team.id, 'name': team.name} for team in teams]
-
-    def get_employee_info(self, obj):
-        """Get employee info if exists"""
+    def validate_email(self, value):
+        """Check if email exists"""
         try:
-            employee = Employee.objects.get(user=obj)
+            user = User.objects.get(email=value)
+            if not user.is_active:
+                raise serializers.ValidationError("This account has been disabled.")
+        except User.DoesNotExist:
+            # Don't reveal if email exists or not for security
+            pass
+        return value
+
+    def save(self):
+        """Generate and send password reset email"""
+        email = self.validated_data['email']
+        try:
+            user = User.objects.get(email=email, is_active=True)
+            
+            # Generate token
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            
+            # Create reset link (adjust domain for production)
+            reset_link = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
+            
+            # Send email
+            subject = "Password Reset Request - GearGuard"
+            message = f"""
+Hello {user.get_full_name() or user.username},
+
+You have requested to reset your password for GearGuard.
+
+Please click the link below to reset your password:
+{reset_link}
+
+This link will expire in 24 hours.
+
+If you didn't request this password reset, please ignore this email.
+
+Best regards,
+GearGuard Team
+            """
+            
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            
             return {
-                'id': employee.id,
-                'employee_code': employee.employee_code,
-                'department': employee.department.name if employee.department else None,
-                'position': employee.position,
-                'phone': employee.phone,
-                'image': employee.image.url if employee.image else None
+                'uid': uid,
+                'token': token,
+                'message': 'Password reset email sent successfully'
             }
-        except Employee.DoesNotExist:
-            return None
+        except User.DoesNotExist:
+            # Return success message even if user doesn't exist (security best practice)
+            return {
+                'message': 'If an account exists with this email, a password reset link has been sent.'
+            }
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Serializer for confirming password reset"""
+    uid = serializers.CharField(required=True)
+    token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
+    new_password2 = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'}, label='Confirm New Password')
+
+    def validate(self, attrs):
+        """Validate token and passwords"""
+        try:
+            # Decode user ID
+            uid = force_str(urlsafe_base64_decode(attrs['uid']))
+            user = User.objects.get(pk=uid)
+            
+            # Validate token
+            if not default_token_generator.check_token(user, attrs['token']):
+                raise serializers.ValidationError({"token": "Invalid or expired reset link."})
+            
+            # Check if passwords match
+            if attrs['new_password'] != attrs['new_password2']:
+                raise serializers.ValidationError({"new_password": "Password fields didn't match."})
+            
+            # Validate password strength
+            try:
+                validate_password(attrs['new_password'], user)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError({"new_password": list(e.messages)})
+            
+            # Store user in validated data for save method
+            attrs['user'] = user
+            return attrs
+            
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise serializers.ValidationError({"uid": "Invalid reset link."})
+
+    def save(self):
+        """Reset the password"""
+        user = self.validated_data['user']
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        
+        # Invalidate all existing tokens for this user
+        from rest_framework.authtoken.models import Token
+        Token.objects.filter(user=user).delete()
+        
+        return user
 
 
 class CompanySerializer(serializers.ModelSerializer):

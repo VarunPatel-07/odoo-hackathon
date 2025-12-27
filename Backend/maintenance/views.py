@@ -1,9 +1,11 @@
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
 from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.db.models import Count, Q
@@ -15,7 +17,9 @@ from .models import (
     MaintenanceRequest, MaintenanceLog, ScheduledMaintenance
 )
 from .serializers import (
-    UserSerializer, CompanySerializer, VendorSerializer,
+    UserSerializer, UserRegistrationSerializer, UserProfileSerializer, PasswordChangeSerializer,
+    PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
+    CompanySerializer, VendorSerializer,
     DepartmentSerializer, EmployeeSerializer, WorkCenterSerializer,
     MaintenanceTeamSerializer, EquipmentCategorySerializer,
     EquipmentSerializer, EquipmentListSerializer, EquipmentAutoFillSerializer,
@@ -24,6 +28,216 @@ from .serializers import (
     MaintenanceLogSerializer, ScheduledMaintenanceSerializer,
     CalendarEventSerializer, DashboardStatsSerializer
 )
+
+
+# Authentication Views
+class UserRegistrationView(APIView):
+    """User registration endpoint"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            # Create token for the user
+            token, created = Token.objects.get_or_create(user=user)
+            
+            return Response({
+                'user': UserSerializer(user).data,
+                'token': token.key,
+                'message': 'User registered successfully'
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserLoginView(APIView):
+    """User login endpoint"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        if not username or not password:
+            return Response({
+                'error': 'Please provide both username and password'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = authenticate(username=username, password=password)
+        
+        if user is None:
+            return Response({
+                'error': 'Invalid credentials. Please check your username and password.'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        if not user.is_active:
+            return Response({
+                'error': 'This account has been disabled. Please contact support.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Create or get token
+        token, created = Token.objects.get_or_create(user=user)
+        
+        # Update last login
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
+        
+        return Response({
+            'user': UserSerializer(user).data,
+            'token': token.key,
+            'message': 'Login successful'
+        }, status=status.HTTP_200_OK)
+
+
+class UserLogoutView(APIView):
+    """User logout endpoint"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            # Delete the user's token
+            request.user.auth_token.delete()
+            return Response({
+                'message': 'Logout successful'
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'error': 'Something went wrong during logout'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserProfileView(APIView):
+    """User profile view and update endpoint"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get current user's profile"""
+        serializer = UserProfileSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def put(self, request):
+        """Update current user's profile"""
+        serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'user': serializer.data,
+                'message': 'Profile updated successfully'
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request):
+        """Partially update current user's profile"""
+        serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'user': serializer.data,
+                'message': 'Profile updated successfully'
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordChangeView(APIView):
+    """Change password endpoint"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            # Delete old token and create new one
+            try:
+                request.user.auth_token.delete()
+            except:
+                pass
+            token = Token.objects.create(user=request.user)
+            
+            return Response({
+                'message': 'Password changed successfully. Please use new token for further requests.',
+                'token': token.key
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetRequestView(APIView):
+    """Request password reset - send reset email"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            result = serializer.save()
+            return Response({
+                'message': 'If an account exists with this email, a password reset link has been sent.'
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    """Confirm password reset with token"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            
+            # Create new token for the user
+            token = Token.objects.create(user=user)
+            
+            return Response({
+                'message': 'Password has been reset successfully. You can now login with your new password.',
+                'token': token.key,
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserMaintenanceHistoryView(APIView):
+    """View user's maintenance request history"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get maintenance requests created by the user"""
+        # Get query parameters
+        status_filter = request.query_params.get('status', None)
+        limit = request.query_params.get('limit', None)
+        
+        # Base queryset - using created_by instead of requested_by
+        queryset = MaintenanceRequest.objects.filter(
+            created_by=request.user
+        ).select_related(
+            'equipment', 'work_center', 'maintenance_team', 'company'
+        ).order_by('-request_date')
+        
+        # Apply status filter if provided
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        # Apply limit if provided
+        if limit:
+            try:
+                queryset = queryset[:int(limit)]
+            except ValueError:
+                pass
+        
+        serializer = MaintenanceRequestListSerializer(queryset, many=True)
+        
+        # Get statistics - using created_by instead of requested_by
+        stats = {
+            'total': MaintenanceRequest.objects.filter(created_by=request.user).count(),
+            'new': MaintenanceRequest.objects.filter(created_by=request.user, status='new').count(),
+            'in_progress': MaintenanceRequest.objects.filter(created_by=request.user, status='in_progress').count(),
+            'repaired': MaintenanceRequest.objects.filter(created_by=request.user, status='repaired').count(),
+            'scrap': MaintenanceRequest.objects.filter(created_by=request.user, status='scrap').count(),
+        }
+        
+        return Response({
+            'maintenance_requests': serializer.data,
+            'statistics': stats
+        }, status=status.HTTP_200_OK)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
