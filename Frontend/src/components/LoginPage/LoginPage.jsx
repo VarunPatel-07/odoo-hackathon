@@ -144,16 +144,7 @@ function LoginPage() {
             </button>
           </div>
 
-          {error && (
-            <p className="text-[11px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
-          {success && (
-            <p className="text-[11px] text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
-              {success}
-            </p>
-          )}
+         
 
           <Button
             type="submit"
