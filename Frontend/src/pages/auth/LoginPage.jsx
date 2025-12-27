@@ -1,17 +1,20 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 
-import { useState } from "react";
-
+import { useContext, useState } from "react";
 import { isValidEmail } from "../../utils/helper/helper";
 import { ERROR_MESSAGES } from "../../constant/constant";
 import { multipleApi } from "../../utils/api/api";
+import { NotificationContext } from "../../context/notification/NotificationContextApi";
 
 
 // Main login page with left illustration and right form
 function LoginPage() {
-  // ---------- STATE ----------
+  const { handelNotification } = useContext(NotificationContext);
+
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -24,7 +27,7 @@ function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (email?.trim()?.length === 0 || password?.trim()?.length === 0) {
+    if (email?.trim()?.length === 0 || !isValidEmail(email) || password?.trim()?.length === 0) {
       setShowError(true);
       return;
     }
@@ -38,7 +41,7 @@ function LoginPage() {
         protected: false,
         method: "POST",
         data: {
-          username: email,
+          email: email,
           password: password,
         },
       },
@@ -47,7 +50,13 @@ function LoginPage() {
 
     const res = response[0];
 
-    console.log(res);
+    setLoading(false);
+
+    if (res?.success) {
+      navigate("/");
+    } else {
+      handelNotification(res);
+    }
   };
 
   // ---------- UI ----------
