@@ -7,52 +7,54 @@ const Sidebar = () => {
 
   // Updated menu items - only 3 pages
   const menuItems = [
-    { 
-      id: 1, 
-      name: "Dashboard", 
+    {
+      id: 1,
+      name: "Dashboard",
       path: "/dashboard",
-      icon: "📊" // Dashboard icon
+      icon: "📊", // Dashboard icon
     },
-    { 
-      id: 2, 
-      name: "Maintenance Request", 
+    {
+      id: 2,
+      name: "Maintenance Request",
       path: "/maintenance-request",
-      icon: "🔧" // Maintenance icon
+      icon: "🔧", // Maintenance icon
     },
-    { 
-      id: 3, 
-      name: "Config", 
-      path: "/config",
-      icon: "⚙️" // Settings icon
+    {
+      id: 3,
+      name: "Config",
+      path: "/config/equipment",
+      icon: "⚙️", // Settings icon
     },
   ];
 
   return (
-    <aside style={{
-      width: isCollapsed ? "80px" : "256px", // Toggle width
-      backgroundColor: "white",
-      boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
-      display: "flex",
-      flexDirection: "column",
-      transition: "width 0.3s ease", // Smooth animation
-    }}>
-      {/* Logo Section */}
-      <div style={{
-        height: "64px",
+    <aside
+      style={{
+        width: isCollapsed ? "80px" : "256px", // Toggle width
+        backgroundColor: "white",
+        boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
         display: "flex",
-        alignItems: "center",
-        justifyContent: isCollapsed ? "center" : "space-between",
-        padding: isCollapsed ? "0" : "0 16px",
-        borderBottom: "1px solid #e5e7eb",
-        background: "linear-gradient(to right, #2563eb, #1d4ed8)",
+        flexDirection: "column",
+        transition: "width 0.3s ease", // Smooth animation
       }}>
+      {/* Logo Section */}
+      <div
+        style={{
+          height: "64px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: isCollapsed ? "center" : "space-between",
+          padding: isCollapsed ? "0" : "0 16px",
+          borderBottom: "1px solid #e5e7eb",
+          background: "linear-gradient(to right, #2563eb, #1d4ed8)",
+        }}>
         {!isCollapsed && (
           <div style={{ color: "white", textAlign: "left" }}>
             <h1 style={{ fontSize: "18px", fontWeight: "bold", margin: 0 }}>Preventive</h1>
             <p style={{ fontSize: "12px", margin: 0, opacity: 0.9 }}>Maintenance</p>
           </div>
         )}
-        
+
         {/* Toggle Button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -73,8 +75,7 @@ const Sidebar = () => {
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = "transparent";
-          }}
-        >
+          }}>
           {isCollapsed ? "☰" : "✕"}
         </button>
       </div>
@@ -82,14 +83,15 @@ const Sidebar = () => {
       {/* Menu Items */}
       <nav style={{ flex: 1, padding: "24px 16px" }}>
         {!isCollapsed && (
-          <p style={{
-            fontSize: "12px",
-            fontWeight: "600",
-            color: "#6b7280",
-            textTransform: "uppercase",
-            marginBottom: "16px",
-            paddingLeft: "16px",
-          }}>
+          <p
+            style={{
+              fontSize: "12px",
+              fontWeight: "600",
+              color: "#6b7280",
+              textTransform: "uppercase",
+              marginBottom: "16px",
+              paddingLeft: "16px",
+            }}>
             Menu
           </p>
         )}
@@ -129,9 +131,7 @@ const Sidebar = () => {
               title={isCollapsed ? item.name : ""} // Tooltip when collapsed
             >
               <span style={{ fontSize: "18px" }}>{item.icon}</span>
-              {!isCollapsed && (
-                <span style={{ marginLeft: "12px" }}>{item.name}</span>
-              )}
+              {!isCollapsed && <span style={{ marginLeft: "12px" }}>{item.name}</span>}
             </Link>
           );
         })}
@@ -159,8 +159,7 @@ const Sidebar = () => {
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = "transparent";
           }}
-          title={isCollapsed ? "Log Out" : ""}
-        >
+          title={isCollapsed ? "Log Out" : ""}>
           <span style={{ fontSize: "18px" }}>🚪</span>
           {!isCollapsed && <span style={{ marginLeft: "8px" }}>Log Out</span>}
         </Link>

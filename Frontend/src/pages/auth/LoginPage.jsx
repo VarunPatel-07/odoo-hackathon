@@ -53,7 +53,7 @@ function LoginPage() {
     setLoading(false);
 
     if (res?.success) {
-      navigate("/");
+      navigate("/dashboard");
       storeDataInSecureCookie(res?.data?.token, "authenticationToken", true);
     } else {
       handelNotification(res);

@@ -102,32 +102,32 @@ function RegisterPage() {
           success: true,
           message: "Registration successful! Redirecting...",
         });
-        navigate("/");
-      } 
+        navigate("/dashboard");
+      }
       // Handle 400 Bad Request with validation errors
       else if (res?.status === 400 || res?.error?.status === 400) {
         console.log("400 Error Detected - Validation Issues");
-        
+
         // Parse backend validation errors
         const errorData = res?.error?.data || res?.data || {};
         console.log("Error Data:", errorData);
-        
+
         // Set field-specific errors
         const fieldErrors = {};
         let errorMessages = [];
 
         // Handle different error response formats from Django REST Framework
-        if (typeof errorData === 'object') {
+        if (typeof errorData === "object") {
           Object.keys(errorData).forEach((field) => {
             const fieldError = errorData[field];
-            
+
             // Handle array of errors
             if (Array.isArray(fieldError)) {
               fieldErrors[field] = fieldError[0]; // Take first error message
               errorMessages.push(`${field}: ${fieldError[0]}`);
-            } 
+            }
             // Handle string error
-            else if (typeof fieldError === 'string') {
+            else if (typeof fieldError === "string") {
               fieldErrors[field] = fieldError;
               errorMessages.push(`${field}: ${fieldError}`);
             }
@@ -140,11 +140,12 @@ function RegisterPage() {
         // Show notification with all errors
         handelNotification({
           success: false,
-          message: errorMessages.length > 0 
-            ? errorMessages.join(", ") 
-            : res?.error?.message || "Registration failed. Please check your inputs.",
+          message:
+            errorMessages.length > 0
+              ? errorMessages.join(", ")
+              : res?.error?.message || "Registration failed. Please check your inputs.",
         });
-      } 
+      }
       // Handle other errors
       else {
         console.log("Other Error Type");
