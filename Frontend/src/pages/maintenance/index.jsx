@@ -220,11 +220,11 @@ export default function KanbanBoard() {
         </div>
       ) : (
         /* Kanban Board */
-        <div className="max-w-[1600px] mx-auto px-6 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="max-w-400 overflow-auto mx-auto px-6 py-6">
+          <div className="flex items-stretch justify-start gap-5">
             {/* Rest of the board content */}
             {Object.entries(STATUS_COLUMNS).map(([status, title]) => (
-              <div key={status} className="flex flex-col" data-column-status={status}>
+              <div key={status} className="flex flex-col min-w-100" data-column-status={status}>
                 {/* Column Header */}
                 <div className={`rounded-t-xl border-2 ${COLUMN_STYLES[status]} p-4 shadow-sm`}>
                   <div className="flex items-center justify-between mb-2">
@@ -241,14 +241,14 @@ export default function KanbanBoard() {
                 </div>
 
                 {/* Column Body */}
-                <div className="flex-1 bg-white/50 backdrop-blur-sm border-x-2 border-b-2 border-slate-200 rounded-b-xl p-3 relative">
+                <div className="flex-1 bg-white/50 backdrop-blur-sm border-x-2 border-b-2 border-slate-200 rounded-b-xl px-4 py-6 relative max-h-[calc(100vh-220px)] overflow-auto">
                   <ReactSortable
                     tag="div"
                     list={tasks[status]}
                     setList={(list) => handleSetList(list, status)}
                     group={{
                       name: "kanban",
-                      pull: true,
+                      pull: status === "repaired" ? false : true,
                       put: true,
                     }}
                     animation={200}
@@ -259,7 +259,7 @@ export default function KanbanBoard() {
                     scroll
                     scrollSensitivity={100}
                     scrollSpeed={20}
-                    className="min-h-[500px] space-y-3"
+                    className="min-h-125 space-y-5"
                     onStart={handleDragStart}
                     onEnd={handleDragEnd}>
                     {tasks[status].map((task) => {

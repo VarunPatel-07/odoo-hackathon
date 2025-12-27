@@ -7,7 +7,8 @@ import Layout from "./components/layout/Layout.jsx";
 import ConfigModule from "./pages/config/index.jsx";
 import { CONFIG_SIDEBAR_ITEMS } from "./constant/configModule.jsx";
 import MaintenanceRequest from "./pages/maintenance/index.jsx";
-import Profile from "./pages/Profile.jsx";
+import Profile from "./pages/profile/index.jsx";
+import MaintenanceCalendar from "./pages/maintenance/calenderView.jsx";
 
 function App() {
   return (
@@ -17,12 +18,14 @@ function App() {
       <Route path="/auth/register" element={<RegisterPage />} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      <Route path="profile" element={<Profile />} />
+
       <Route element={<ProtectedRoutes />}>
         <Route element={<Layout />}>
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="profile" element={<Profile />} />
 
           <Route path="maintenance-request" element={<MaintenanceRequest />} />
+          <Route path="maintenance-calender" element={<MaintenanceCalendar />} />
 
           <Route path="config" element={<ConfigModule />}>
             {CONFIG_SIDEBAR_ITEMS?.map((item) => {
