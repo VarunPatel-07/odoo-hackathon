@@ -17,7 +17,7 @@ const Sidebar = () => {
     {
       id: 2,
       name: "Maintenance Request",
-      path: "/maintenance-request",
+      path: "/maintenance",
       icon: FiTool,
       color: "emerald",
     },
@@ -103,22 +103,7 @@ const Sidebar = () => {
               </div>
             </>
           )}
-          {isCollapsed && (
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                backgroundColor: "white",
-                borderRadius: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                margin: "0 auto",
-              }}>
-              <FiTool style={{ width: "20px", height: "20px", color: "#2563eb" }} />
-            </div>
-          )}
+        
         </div>
 
         {/* Toggle Button */}
