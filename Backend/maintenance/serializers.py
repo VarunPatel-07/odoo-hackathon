@@ -695,8 +695,6 @@ class RaiseMaintenanceRequestSerializer(serializers.ModelSerializer):
         if equipment:
             if not validated_data.get('work_center'):
                 validated_data['work_center'] = equipment.work_center
-            if not validated_data.get('equipment_category'):
-                validated_data['equipment_category'] = equipment.category
             if not validated_data.get('company'):
                 validated_data['company'] = equipment.company
             if not validated_data.get('maintenance_team'):

@@ -811,7 +811,7 @@ class MaintenanceRequestViewSet(viewsets.ModelViewSet):
         
         return Response(MaintenanceRequestSerializer(maintenance_request).data)
 
-    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='raise-request')
     def raise_request(self, request):
         """
         Simplified endpoint for users to raise maintenance requests.
@@ -822,14 +822,28 @@ class MaintenanceRequestViewSet(viewsets.ModelViewSet):
             data=request.data,
             context={'request': request}
         )
-        serializer.is_valid(raise_exception=True)
+        
+        if not serializer.is_valid():
+            # Return validation errors in standard format
+            error_messages = []
+            for field, errors in serializer.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
+            
+            return Response({
+                'success': False,
+                'message': '; '.join(error_messages),
+                'data': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         maintenance_request = serializer.save()
         
-        # Return full details of created request
-        return Response(
-            MaintenanceRequestSerializer(maintenance_request).data,
-            status=status.HTTP_201_CREATED
-        )
+        # Return full details of created request in standard format
+        return Response({
+            'success': True,
+            'message': 'Maintenance request created successfully',
+            'data': MaintenanceRequestSerializer(maintenance_request).data
+        }, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'])
     def overdue(self, request):

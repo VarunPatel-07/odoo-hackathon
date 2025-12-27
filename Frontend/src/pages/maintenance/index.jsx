@@ -85,7 +85,7 @@ function Maintenance() {
           message: "Maintenance request created successfully!",
         });
         setShowModal(false);
-        fetchRequests(); // Refresh the board
+        fetchRequests();
       } else {
         handelNotification({
           success: false,
