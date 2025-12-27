@@ -25,6 +25,12 @@ const Sidebar = () => {
       path: "/config/equipment",
       icon: "⚙️", // Settings icon
     },
+    { 
+    id: 4,  // NEW - ADD THIS
+    name: "Profile", 
+    path: "/profile",
+    icon: "👤"
+    },
   ];
 
   return (
