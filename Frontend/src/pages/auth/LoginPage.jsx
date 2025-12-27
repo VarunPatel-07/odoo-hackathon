@@ -4,7 +4,6 @@ import Input from "../common/Input";
 import Button from "../common/Button";
 import { login } from "../api/auth";
 
-// Main login page with left illustration and right form
 function LoginPage() {
   // ---------- STATE ----------
   const [id, setId] = useState("");
