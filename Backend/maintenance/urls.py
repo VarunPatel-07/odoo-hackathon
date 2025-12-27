@@ -21,6 +21,10 @@ urlpatterns = [
     path('auth/register/', views.UserRegistrationView.as_view(), name='register'),
     path('auth/login/', views.UserLoginView.as_view(), name='login'),
     path('auth/logout/', views.UserLogoutView.as_view(), name='logout'),
+    path('auth/verify-token/', views.TokenVerifyView.as_view(), name='verify-token'),
+    
+    # Social authentication endpoints
+    path('auth/google/', views.GoogleLogin.as_view(), name='google_login'),
     
     # Password management endpoints
     path('auth/change-password/', views.PasswordChangeView.as_view(), name='change-password'),

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",  # Required for allauth
     
     # Third party apps
     "rest_framework",
@@ -45,6 +46,14 @@ INSTALLED_APPS = [
     "django_filters",
     "django_celery_beat",
     "django_celery_results",
+    
+    # Allauth for social authentication
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "dj_rest_auth",
+    "dj_rest_auth.registration",
     
     # Local apps
     "maintenance",
@@ -59,6 +68,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "gearguard.urls"
@@ -196,3 +206,50 @@ DEFAULT_FROM_EMAIL = 'GearGuard <noreply@gearguard.com>'
 
 # Frontend URL (for password reset links)
 FRONTEND_URL = 'http://localhost:5173'  # Adjust for your React frontend URL
+
+
+# Site ID for django.contrib.sites (required by allauth)
+SITE_ID = 1
+
+
+# Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    # Django default backend
+    'django.contrib.auth.backends.ModelBackend',
+    # Allauth backend for social authentication
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+
+# Allauth Configuration (Updated for django-allauth 65+)
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory', 'optional', or 'none'
+ACCOUNT_LOGIN_METHODS = {'email'}  # Login with email only
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']  # Required signup fields
+SOCIALACCOUNT_AUTO_SIGNUP = True  # Automatically create accounts for social logins
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_UNIQUE_EMAIL = True
+
+
+# Social Account Provider Configuration
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'APP': {
+            'client_id': '1089904550106-qrqdv62ngapejt5qr14allofejusp0cv.apps.googleusercontent.com',  # Add your Google Client ID here or use environment variable
+            'secret': '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',  # Add your Google Client Secret here or use environment variable
+            'key': ''
+        },
+        'VERIFIED_EMAIL': True,  # Trust Google's email verification
+    }
+}
+
+# You can also use environment variables (recommended for production):
+# import os
+# SOCIALACCOUNT_PROVIDERS['google']['APP']['client_id'] = os.getenv('GOOGLE_CLIENT_ID', '')
+# SOCIALACCOUNT_PROVIDERS['google']['APP']['secret'] = os.getenv('GOOGLE_CLIENT_SECRET', '')
