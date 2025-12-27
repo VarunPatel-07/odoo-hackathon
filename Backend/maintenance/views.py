@@ -11,6 +11,11 @@ from django.utils import timezone
 from django.db.models import Count, Q
 from datetime import timedelta
 
+# Social authentication imports
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from dj_rest_auth.registration.views import SocialLoginView
+
 from .models import (
     Company, Department, Vendor, Employee, WorkCenter,
     MaintenanceTeam, EquipmentCategory, Equipment, 
@@ -30,7 +35,50 @@ from .serializers import (
 )
 
 
+# Social Authentication Views
+class GoogleLogin(SocialLoginView):
+    """
+    Google OAuth2 login endpoint
+    
+    Accepts a Google access token or authorization code and returns
+    a DRF authentication token along with user information.
+    
+    POST /api/auth/google/
+    Body: { "access_token": "..." } or { "code": "..." }
+    """
+    adapter_class = GoogleOAuth2Adapter
+    callback_url = 'http://localhost:5173'  # Your frontend URL
+    client_class = OAuth2Client
+
+
 # Authentication Views
+class TokenVerifyView(APIView):
+    """Verify if user's token is valid"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Verify token and return user data"""
+        return Response({
+            'success': True,
+            'message': 'Token is valid',
+            'data': {
+                'user': UserSerializer(request.user).data,
+                'token': request.auth.key
+            }
+        }, status=status.HTTP_200_OK)
+    
+    def get(self, request):
+        """Verify token via GET request"""
+        return Response({
+            'success': True,
+            'message': 'Token is valid',
+            'data': {
+                'user': UserSerializer(request.user).data,
+                'token': request.auth.key
+            }
+        }, status=status.HTTP_200_OK)
+
+
 class UserRegistrationView(APIView):
     """User registration endpoint"""
     permission_classes = [AllowAny]
@@ -43,37 +91,60 @@ class UserRegistrationView(APIView):
             token, created = Token.objects.get_or_create(user=user)
             
             return Response({
-                'user': UserSerializer(user).data,
-                'token': token.key,
-                'message': 'User registered successfully'
+                'success': True,
+                'message': 'User registered successfully',
+                'data': {
+                    'user': UserSerializer(user).data,
+                    'token': token.key
+                }
             }, status=status.HTTP_201_CREATED)
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'success': False,
+            'message': 'Registration failed',
+            'data': None
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserLoginView(APIView):
-    """User login endpoint"""
+    """User login endpoint - uses email for authentication"""
     permission_classes = [AllowAny]
     
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
         
-        if not username or not password:
+        # Support both JSON and form data
+        email = request.data.get('email') or request.POST.get('email')
+        password = request.data.get('password') or request.POST.get('password')
+        
+        if not email or not password:
             return Response({
-                'error': 'Please provide both username and password'
+                'success': False,
+                'message': 'Please provide both email and password',
+                'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        user = authenticate(username=username, password=password)
+        # Find user by email
+        try:
+            user_obj = User.objects.get(email=email)
+            # Authenticate using username
+            user = authenticate(username=user_obj.username, password=password)
+        except User.DoesNotExist:
+            user = None
         
         if user is None:
             return Response({
-                'error': 'Invalid credentials. Please check your username and password.'
+                'success': False,
+                'message': 'Invalid credentials. Please check your email and password.',
+                'data': None
             }, status=status.HTTP_401_UNAUTHORIZED)
         
         if not user.is_active:
             return Response({
-                'error': 'This account has been disabled. Please contact support.'
+                'success': False,
+                'message': 'This account has been disabled. Please contact support.',
+                'data': None
             }, status=status.HTTP_403_FORBIDDEN)
         
         # Create or get token
@@ -84,9 +155,12 @@ class UserLoginView(APIView):
         user.save(update_fields=['last_login'])
         
         return Response({
-            'user': UserSerializer(user).data,
-            'token': token.key,
-            'message': 'Login successful'
+            'success': True,
+            'message': 'Login successful',
+            'data': {
+                'user': UserSerializer(user).data,
+                'token': token.key
+            }
         }, status=status.HTTP_200_OK)
 
 
@@ -99,11 +173,15 @@ class UserLogoutView(APIView):
             # Delete the user's token
             request.user.auth_token.delete()
             return Response({
-                'message': 'Logout successful'
+                'success': True,
+                'message': 'Logout successful',
+                'data': None
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({
-                'error': 'Something went wrong during logout'
+                'success': False,
+                'message': 'Something went wrong during logout',
+                'data': None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -114,7 +192,11 @@ class UserProfileView(APIView):
     def get(self, request):
         """Get current user's profile"""
         serializer = UserProfileSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({
+            'success': True,
+            'message': 'Profile retrieved successfully',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
     
     def put(self, request):
         """Update current user's profile"""
@@ -122,10 +204,15 @@ class UserProfileView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response({
-                'user': serializer.data,
-                'message': 'Profile updated successfully'
+                'success': True,
+                'message': 'Profile updated successfully',
+                'data': serializer.data
             }, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'success': False,
+            'message': 'Profile update failed',
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
     
     def patch(self, request):
         """Partially update current user's profile"""
@@ -133,10 +220,15 @@ class UserProfileView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response({
-                'user': serializer.data,
-                'message': 'Profile updated successfully'
+                'success': True,
+                'message': 'Profile updated successfully',
+                'data': serializer.data
             }, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'success': False,
+            'message': 'Profile update failed',
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PasswordChangeView(APIView):
@@ -155,10 +247,17 @@ class PasswordChangeView(APIView):
             token = Token.objects.create(user=request.user)
             
             return Response({
-                'message': 'Password changed successfully. Please use new token for further requests.',
-                'token': token.key
+                'success': True,
+                'message': 'Password changed successfully',
+                'data': {
+                    'token': token.key
+                }
             }, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'success': False,
+            'message': 'Password change failed',
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PasswordResetRequestView(APIView):
@@ -170,9 +269,15 @@ class PasswordResetRequestView(APIView):
         if serializer.is_valid():
             result = serializer.save()
             return Response({
-                'message': 'If an account exists with this email, a password reset link has been sent.'
+                'success': True,
+                'message': 'If an account exists with this email, a password reset link has been sent.',
+                'data': None
             }, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'success': False,
+            'message': 'Password reset request failed',
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PasswordResetConfirmView(APIView):
@@ -188,11 +293,18 @@ class PasswordResetConfirmView(APIView):
             token = Token.objects.create(user=user)
             
             return Response({
-                'message': 'Password has been reset successfully. You can now login with your new password.',
-                'token': token.key,
-                'user': UserSerializer(user).data
+                'success': True,
+                'message': 'Password has been reset successfully',
+                'data': {
+                    'token': token.key,
+                    'user': UserSerializer(user).data
+                }
             }, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'success': False,
+            'message': 'Password reset failed',
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserMaintenanceHistoryView(APIView):

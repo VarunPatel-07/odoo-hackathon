@@ -55,6 +55,8 @@ urlpatterns = [
     path("", api_root, name="api-root"),
     # DRF browsable API auth
     path("api-auth/", include("rest_framework.urls")),
+    # Allauth URLs (for admin/social account management)
+    path("accounts/", include("allauth.urls")),
 ]
 
 # Serve media files in development
