@@ -4,6 +4,7 @@ import { multipleApi } from "../../utils/api/api";
 import { formateDate } from "../../utils/helper/helper";
 import { FiAlertCircle, FiCalendar, FiPackage, FiUser, FiClock, FiMoreVertical, FiPlus } from "react-icons/fi";
 import { NotificationContext } from "../../context/notification/NotificationContextApi";
+import RequestDetailModal from "./RequestDetailModal";
 import CreateRequestModal from "./CreateRequestModal";
 
 
@@ -60,10 +61,6 @@ const REQUEST_TYPE_CONFIG = {
 
 
 /* ================= API FUNCTIONS ================= */
-
-/**
- * UPDATE REQUEST STATUS - Your existing function (no changes)
- */
 const updateRequestStatus = async (taskId, currentStatus, newStatus) => {
   try {
     const response = await multipleApi([
@@ -82,10 +79,6 @@ const updateRequestStatus = async (taskId, currentStatus, newStatus) => {
   }
 };
 
-/**
- * CREATE NEW REQUEST - NEW API FUNCTION
- * API Endpoint: POST /api/requests/raise-request/
- */
 const createNewRequest = async (requestData) => {
   try {
     const response = await multipleApi([
@@ -107,7 +100,7 @@ const createNewRequest = async (requestData) => {
 
 /* ================= COMPONENT ================= */
 export default function KanbanBoard() {
-  const { handelNotification } = useContext(NotificationContext); // ADDED: Notification context
+  const { handelNotification } = useContext(NotificationContext);
 
   const [tasks, setTasks] = useState({
     new: [],
@@ -118,10 +111,12 @@ export default function KanbanBoard() {
 
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  // NEW STATE: Modal control
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // NEW STATE: Detail modal
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   console.log(isDragging);
   const dragMeta = useRef({
@@ -130,7 +125,7 @@ export default function KanbanBoard() {
   });
 
 
-  /* ================= FETCH DATA - Your existing function (no changes) ================= */
+  /* ================= FETCH DATA ================= */
   useEffect(() => {
     fetchRequests();
   }, []);
@@ -161,7 +156,7 @@ export default function KanbanBoard() {
   };
 
 
-  /* ================= HANDLE DRAG & DROP - Your existing functions (no changes) ================= */
+  /* ================= DRAG & DROP HANDLERS ================= */
   const handleDragStart = (evt) => {
     setIsDragging(true);
     const taskId = evt.item.dataset.id;
@@ -200,11 +195,7 @@ export default function KanbanBoard() {
     setTasks((prev) => ({ ...prev, [status]: list }));
   };
 
-  /* ================= NEW: HANDLE FORM SUBMISSION ================= */
-  /**
-   * HANDLE FORM SUBMISSION FROM MODAL
-   * Receives form data from modal component and creates request
-   */
+  /* ================= FORM HANDLERS ================= */
   const handleFormSubmit = async (formData) => {
     setIsSubmitting(true);
 
@@ -218,7 +209,7 @@ export default function KanbanBoard() {
           message: "Maintenance request created successfully!",
         });
         setShowModal(false);
-        fetchRequests(); // Refresh the board
+        fetchRequests();
       } else {
         handelNotification({
           success: false,
@@ -234,6 +225,21 @@ export default function KanbanBoard() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  /* ================= NEW: CARD CLICK HANDLER ================= */
+  /**
+   * Handle card click to show detail modal
+   * Opens detail modal with selected task information
+   */
+  const handleCardClick = (task) => {
+    setSelectedTask(task);
+    setShowDetailModal(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedTask(null);
   };
 
 
@@ -255,7 +261,6 @@ export default function KanbanBoard() {
                 </span>
               </div>
 
-              {/* NEW: CREATE REQUEST BUTTON */}
               <button
                 onClick={() => setShowModal(true)}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg shadow-sm transition-colors duration-200"
@@ -273,17 +278,12 @@ export default function KanbanBoard() {
         <div className="max-w-[1600px] mx-auto px-6 py-6">
           <div className="flex items-center justify-center min-h-[600px]">
             <div className="text-center">
-              {/* Animated Loader */}
               <div className="relative w-24 h-24 mx-auto mb-6">
-                {/* Outer ring */}
                 <div className="absolute inset-0 border-4 border-blue-200 rounded-full animate-ping opacity-75"></div>
-                {/* Middle ring */}
                 <div
                   className="absolute inset-2 border-4 border-blue-400 rounded-full animate-spin"
                   style={{ borderTopColor: "transparent" }}></div>
-                {/* Inner ring */}
                 <div className="absolute inset-4 border-4 border-blue-600 rounded-full animate-pulse"></div>
-                {/* Center dot */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-4 h-4 bg-blue-600 rounded-full animate-bounce"></div>
                 </div>
@@ -292,7 +292,6 @@ export default function KanbanBoard() {
               <h3 className="text-lg font-semibold text-slate-700 mb-2">Loading Maintenance Board</h3>
               <p className="text-sm text-slate-500">Fetching your tasks...</p>
 
-              {/* Loading dots animation */}
               <div className="flex justify-center gap-2 mt-4">
                 <div
                   className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
@@ -309,12 +308,10 @@ export default function KanbanBoard() {
         </div>
       ) : (
         /* Kanban Board */
-        <div className="max-w-400 overflow-auto mx-auto px-6 py-6">
-          <div className="flex items-stretch justify-start gap-5">
-            {/* Rest of the board content */}
+        <div className="max-w-[1600px] mx-auto px-6 py-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
             {Object.entries(STATUS_COLUMNS).map(([status, title]) => (
-              <div key={status} className="flex flex-col min-w-100" data-column-status={status}>
-                {/* Column Header */}
+              <div key={status} className="flex flex-col" data-column-status={status}>
                 <div className={`rounded-t-xl border-2 ${COLUMN_STYLES[status]} p-4 shadow-sm`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -329,15 +326,14 @@ export default function KanbanBoard() {
                   </div>
                 </div>
 
-                {/* Column Body */}
-                <div className="flex-1 bg-white/50 backdrop-blur-sm border-x-2 border-b-2 border-slate-200 rounded-b-xl px-4 py-6 relative max-h-[calc(100vh-220px)] overflow-auto">
+                <div className="flex-1 bg-white/50 backdrop-blur-sm border-x-2 border-b-2 border-slate-200 rounded-b-xl p-3 relative">
                   <ReactSortable
                     tag="div"
                     list={tasks[status]}
                     setList={(list) => handleSetList(list, status)}
                     group={{
                       name: "kanban",
-                      pull: status === "repaired" ? false : true,
+                      pull: true,
                       put: true,
                     }}
                     animation={200}
@@ -348,7 +344,7 @@ export default function KanbanBoard() {
                     scroll
                     scrollSensitivity={100}
                     scrollSpeed={20}
-                    className="min-h-125 space-y-5"
+                    className="min-h-[500px] space-y-3"
                     onStart={handleDragStart}
                     onEnd={handleDragEnd}>
                     {tasks[status].map((task) => {
@@ -359,8 +355,8 @@ export default function KanbanBoard() {
                         <div
                           key={task.id}
                           data-id={task.id}
-                          className="group bg-white rounded-lg border-2 border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-grab active:cursor-grabbing active:rotate-2 active:scale-105">
-                          {/* Card Header */}
+                          onClick={() => handleCardClick(task)} // NEW: Click handler
+                          className="group bg-white rounded-lg border-2 border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer active:scale-105">
                           <div className="p-4 pb-3">
                             <div className="flex items-start justify-between mb-3">
                               <h3 className="font-semibold text-slate-900 text-sm leading-tight pr-2 flex-1">
@@ -372,13 +368,18 @@ export default function KanbanBoard() {
                                     <FiAlertCircle className="text-red-600 w-3.5 h-3.5" />
                                   </div>
                                 )}
-                                <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-100 rounded">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent card click
+                                    // Add your menu handler here
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-100 rounded"
+                                >
                                   <FiMoreVertical className="w-3.5 h-3.5 text-slate-400" />
                                 </button>
                               </div>
                             </div>
 
-                            {/* Tags */}
                             <div className="flex flex-wrap gap-2 mb-3">
                               <span
                                 className={`${type.bg} ${type.color} border ${type.border} text-xs font-medium px-2.5 py-1 rounded-md inline-flex items-center gap-1`}>
@@ -392,7 +393,6 @@ export default function KanbanBoard() {
                               </span>
                             </div>
 
-                            {/* Details */}
                             <div className="space-y-2">
                               <div className="flex items-center gap-2 text-xs text-slate-600">
                                 <FiPackage className="w-3.5 h-3.5 text-slate-400" />
@@ -415,7 +415,6 @@ export default function KanbanBoard() {
                             </div>
                           </div>
 
-                          {/* Card Footer */}
                           <div className="bg-slate-50 border-t border-slate-100 px-4 py-2 flex items-center justify-between rounded-b-lg">
                             <span className="text-xs text-slate-500 font-mono">#{task.id}</span>
                             <div className="flex items-center gap-1 text-xs text-slate-400">
@@ -428,7 +427,6 @@ export default function KanbanBoard() {
                     })}
                   </ReactSortable>
 
-                  {/* Empty State */}
                   {tasks[status].length === 0 && (
                     <div className="flex items-center justify-center text-slate-400 w-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                       <div className="w-full h-full flex flex-col items-center justify-center">
@@ -444,12 +442,19 @@ export default function KanbanBoard() {
         </div>
       )}
 
-      {/* NEW: CREATE REQUEST MODAL COMPONENT */}
+      {/* CREATE REQUEST MODAL */}
       <CreateRequestModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSubmit={handleFormSubmit}
         isSubmitting={isSubmitting}
+      />
+
+      {/* NEW: DETAIL MODAL */}
+      <RequestDetailModal
+        isOpen={showDetailModal}
+        onClose={handleCloseDetailModal}
+        task={selectedTask}
       />
     </div>
   );
