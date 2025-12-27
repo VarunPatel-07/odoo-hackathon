@@ -8,6 +8,7 @@ import { ERROR_MESSAGES } from "../../constant/constant";
 import { multipleApi } from "../../utils/api/api";
 import { NotificationContext } from "../../context/notification/NotificationContextApi";
 
+
 // Main login page with left illustration and right form
 function LoginPage() {
   const { handelNotification } = useContext(NotificationContext);
@@ -125,7 +126,7 @@ function LoginPage() {
                   showError={showError}
                   errorMessage={
                     showError
-                      ? password?.trim() == ""
+                      ? password?.trim() === ""
                         ? ERROR_MESSAGES.REQUIRED_FIELD
                         : password?.trim()?.length < 5
                         ? ERROR_MESSAGES.STRONG_PASSWORD
@@ -149,6 +150,16 @@ function LoginPage() {
               {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
+
+            {/* Register Link */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{" "}
+              <Link to="/auth/register" className="text-red-400 hover:text-red-500 font-medium hover:underline">
+                Sign up here
+              </Link>
+            </p>
+          </div>
 
           <p className="mt-4 text-[10px] text-gray-600 text-center max-w-sm mx-auto">
             By continuing you agree to your Terms &amp; Conditions and Privacy policy.
