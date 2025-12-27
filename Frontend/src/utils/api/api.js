@@ -73,6 +73,7 @@ export const multipleApi = async (endPointArr) => {
       }
     } else {
       const url = `${BACKEND_BASE_URL}/${eachEndPoint.endPoint}`;
+      console.log(url)
       const config = {
         method: eachEndPoint.method,
         url,
