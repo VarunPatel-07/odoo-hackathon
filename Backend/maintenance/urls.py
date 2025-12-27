@@ -17,6 +17,20 @@ router.register(r'requests', views.MaintenanceRequestViewSet, basename='request'
 router.register(r'scheduled', views.ScheduledMaintenanceViewSet, basename='scheduled')
 
 urlpatterns = [
+    # Authentication endpoints
+    path('auth/register/', views.UserRegistrationView.as_view(), name='register'),
+    path('auth/login/', views.UserLoginView.as_view(), name='login'),
+    path('auth/logout/', views.UserLogoutView.as_view(), name='logout'),
+    
+    # Password management endpoints
+    path('auth/change-password/', views.PasswordChangeView.as_view(), name='change-password'),
+    path('auth/forgot-password/', views.PasswordResetRequestView.as_view(), name='forgot-password'),
+    path('auth/reset-password/', views.PasswordResetConfirmView.as_view(), name='reset-password'),
+    
+    # User profile endpoints
+    path('auth/profile/', views.UserProfileView.as_view(), name='profile'),
+    path('auth/maintenance-history/', views.UserMaintenanceHistoryView.as_view(), name='maintenance-history'),
+    
     # API routes from router
     path('', include(router.urls)),
     

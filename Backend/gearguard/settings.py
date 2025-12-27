@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     
     # Third party apps
     "rest_framework",
+    "rest_framework.authtoken",  # Token authentication
     "corsheaders",
     "django_filters",
     "django_celery_beat",
@@ -140,6 +141,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],
@@ -177,3 +179,20 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
+
+# Email Configuration
+# For development, emails will be printed to console
+# For production, configure SMTP settings
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Development
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # Production
+
+# SMTP Configuration (uncomment for production)
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'your-email@gmail.com'
+# EMAIL_HOST_PASSWORD = 'your-app-password'
+DEFAULT_FROM_EMAIL = 'GearGuard <noreply@gearguard.com>'
+
+# Frontend URL (for password reset links)
+FRONTEND_URL = 'http://localhost:5173'  # Adjust for your React frontend URL
