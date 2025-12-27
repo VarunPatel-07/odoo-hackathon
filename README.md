@@ -3,12 +3,14 @@
 <div align="center">
 
 ![GearGuard](https://img.shields.io/badge/GearGuard-Maintenance%20Tracker-blue)
-![Django](https://img.shields.io/badge/Django-5.2.4-green)
+![Django](https://img.shields.io/badge/Django-5.0+-green)
 ![DRF](https://img.shields.io/badge/DRF-3.14+-orange)
-![React](https://img.shields.io/badge/React-Latest-61dafb)
+![React](https://img.shields.io/badge/React-19.2-61dafb)
+![Vite](https://img.shields.io/badge/Vite-7.2-646CFF)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1-38B2AC)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-**A comprehensive enterprise-grade maintenance tracking and management system built with Django REST Framework and React**
+**A comprehensive enterprise-grade maintenance tracking and management system built with Django REST Framework and React + Vite**
 
 [Features](#-features) • [Installation](#-installation) • [API Documentation](#-api-documentation) • [Testing](#-testing) • [Configuration](#-configuration)
 
@@ -38,7 +40,7 @@
 
 **GearGuard** is a modern, full-featured maintenance tracking system designed for manufacturing and industrial environments. It provides comprehensive equipment management, maintenance request tracking, work center monitoring, and team coordination capabilities.
 
-The system supports multi-company operations, preventive maintenance scheduling, vendor management, and detailed maintenance history tracking with powerful analytics.
+The system supports multi-company operations, preventive maintenance scheduling, vendor management, and detailed maintenance history tracking with powerful analytics and real-time calendar visualization.
 
 ---
 
@@ -47,11 +49,13 @@ The system supports multi-company operations, preventive maintenance scheduling,
 ### 🔐 Authentication & User Management
 - ✅ User registration with email validation
 - ✅ Secure login with token-based authentication
+- ✅ Social authentication (Google OAuth via django-allauth)
 - ✅ Password change (authenticated users)
 - ✅ Forgot password & password reset via email
 - ✅ User profile management with statistics
 - ✅ Maintenance history tracking per user
 - ✅ Role-based access control
+- ✅ Protected routes with React Router
 
 ### 🏭 Core Features
 - ✅ **Multi-Company Support** - Manage multiple companies/locations
@@ -90,22 +94,40 @@ The system supports multi-company operations, preventive maintenance scheduling,
 ## 🚀 Tech Stack
 
 ### Backend
-- **Framework:** Django 5.2.4
+- **Framework:** Django 5.0+
 - **API:** Django REST Framework 3.14+
-- **Authentication:** Token-based (DRF AuthToken)
-- **Database:** SQLite (Development) / PostgreSQL (Production)
+- **Authentication:** 
+  - Token-based (DRF AuthToken)
+  - Social Auth (django-allauth with Google OAuth)
+  - dj-rest-auth for REST API authentication
+- **Database:** SQLite (Development) / PostgreSQL (Production recommended)
 - **Task Queue:** Celery 5.3+
-- **Scheduler:** Celery Beat with django-celery-beat
+- **Scheduler:** Celery Beat with django-celery-beat 2.5+
 - **Message Broker:** Redis 5.0+
-- **CORS:** django-cors-headers
-- **Filtering:** django-filter
-- **Image Processing:** Pillow
+- **CORS:** django-cors-headers 4.3+
+- **Filtering:** django-filter 23.5+
+- **Image Processing:** Pillow 10.0+
+- **Environment:** python-dotenv 1.0+
 
 ### Frontend
-- **Framework:** React
-- **Build Tool:** Vite
-- **Styling:** CSS (custom)
-- **HTTP Client:** Fetch API
+- **Framework:** React 19.2
+- **Build Tool:** Vite 7.2
+- **Styling:** TailwindCSS 4.1
+- **Routing:** React Router DOM 7.11
+- **UI Components:**
+  - React Icons 5.5
+  - React Big Calendar 1.19 (calendar view)
+  - React Loading Skeleton 3.5 (loading states)
+  - React DnD 16.0 (drag & drop)
+  - Sortable.js (list reordering)
+- **HTTP Client:** Axios 1.13
+- **Date Handling:** date-fns 4.1
+- **Utilities:** 
+  - clsx & tailwind-merge (class management)
+  - js-cookie (cookie handling)
+  - crypto-js (encryption)
+  - validator (validation)
+  - uuid (unique IDs)
 
 ### DevOps
 - **Version Control:** Git
@@ -122,7 +144,8 @@ odoo-hackathon/
 │   │   ├── settings.py         # Main configuration
 │   │   ├── urls.py             # Root URL routing
 │   │   ├── celery.py           # Celery configuration
-│   │   └── wsgi.py             # WSGI entry point
+│   │   ├── wsgi.py             # WSGI entry point
+│   │   └── asgi.py             # ASGI entry point
 │   │
 │   ├── maintenance/            # Main application
 │   │   ├── models.py           # Database models (11 models)
@@ -137,30 +160,60 @@ odoo-hackathon/
 │   ├── manage.py               # Django management script
 │   ├── requirements.txt        # Python dependencies
 │   ├── db.sqlite3              # Database (development)
-│   │
-│   ├── test_auth_api.py        # Authentication tests
-│   ├── test_password_reset.py  # Password reset tests
-│   │
-│   ├── AUTHENTICATION_API.md   # Complete API documentation
-│   ├── PASSWORD_RESET_GUIDE.md # Password reset guide
-│   ├── CHANGES_SUMMARY.md      # Change log
-│   └── README_AUTH.md          # Quick auth guide
+│   ├── .env.example            # Environment variables template
+│   └── PASSWORD_RESET_GUIDE.md # Password reset implementation guide
 │
 ├── Frontend/
 │   ├── src/
-│   │   ├── components/         # React components
-│   │   ├── assets/             # Static assets
-│   │   ├── styles/             # CSS styles
+│   │   ├── components/         # Reusable React components
+│   │   │   ├── common/         # Common UI components (Button, Input, Table, Dropdown)
+│   │   │   ├── config/         # Configuration components
+│   │   │   ├── layout/         # Layout components (Header, Sidebar, PageContainer)
+│   │   │   ├── loader/         # Loading skeleton components
+│   │   │   └── notification/   # Notification system
+│   │   │
+│   │   ├── pages/              # Page components
+│   │   │   ├── auth/           # Authentication pages (Login, Register)
+│   │   │   ├── dashboard/      # Dashboard page
+│   │   │   ├── maintenance/    # Maintenance request pages & calendar view
+│   │   │   ├── config/         # Configuration pages (Equipment, Category, WorkCenter)
+│   │   │   └── profile/        # User profile page
+│   │   │
+│   │   ├── context/            # React Context providers
+│   │   │   └── notification/   # Notification context API
+│   │   │
+│   │   ├── layout/             # Layout wrappers
+│   │   │   └── ProtectedRoutes.jsx  # Route protection
+│   │   │
+│   │   ├── config/             # Configuration files
+│   │   │   └── EnvConfig.js    # Environment configuration
+│   │   │
+│   │   ├── constant/           # Constants and configurations
+│   │   │   ├── configModule.jsx    # Config sidebar items
+│   │   │   └── constant.js         # Application constants
+│   │   │
+│   │   ├── hooks/              # Custom React hooks
+│   │   │   └── useDebounce.js  # Debounce hook
+│   │   │
 │   │   ├── utils/              # Utility functions
-│   │   ├── App.jsx             # Main app component
+│   │   │   ├── api/            # API utilities
+│   │   │   └── helper/         # Helper functions
+│   │   │
+│   │   ├── styles/             # Global styles
+│   │   │   └── index.css       # Main stylesheet
+│   │   │
+│   │   ├── App.jsx             # Main app component with routing
 │   │   └── main.jsx            # Entry point
 │   │
 │   ├── public/                 # Public assets
 │   ├── package.json            # Node dependencies
+│   ├── pnpm-lock.yaml          # pnpm lock file
 │   ├── vite.config.js          # Vite configuration
-│   └── README.md               # Frontend docs
+│   ├── eslint.config.js        # ESLint configuration
+│   └── README.md               # Frontend documentation
 │
 ├── .gitignore                  # Git ignore rules
+├── .vscode/                    # VS Code settings
 └── README.md                   # This file
 ```
 
@@ -170,10 +223,12 @@ odoo-hackathon/
 
 ### Prerequisites
 
-- **Python:** 3.12.0 or higher
-- **Node.js:** 16.x or higher (for frontend)
-- **Redis:** 5.0+ (optional, for Celery)
+- **Python:** 3.10 or higher (3.12 recommended)
+- **Node.js:** 18.x or higher (for frontend)
+- **pnpm:** 10.x or higher (preferred) or npm
+- **Redis:** 5.0+ (required for Celery background tasks)
 - **Git:** For version control
+- **SQLite:** (built-in with Python) or PostgreSQL for production
 
 ### Backend Setup
 
@@ -240,12 +295,17 @@ odoo-hackathon/
 
    Frontend will be available at: **http://localhost:5173**
 
-### Optional: Celery Setup (for background tasks)
+### Celery Setup (for background tasks and scheduled maintenance)
 
 1. **Install and start Redis:**
    ```bash
    # Windows (using Chocolatey)
    choco install redis-64
+   redis-server
+
+   # Windows (using WSL)
+   sudo apt-get install redis-server
+   sudo service redis-server start
 
    # Linux
    sudo apt-get install redis-server
@@ -256,16 +316,23 @@ odoo-hackathon/
    brew services start redis
    ```
 
-2. **Start Celery worker:**
+2. **Start Celery worker (in a new terminal):**
    ```bash
    cd Backend
+   # Windows
+   celery -A gearguard worker -l info --pool=solo
+   
+   # Linux/Mac
    celery -A gearguard worker -l info
    ```
 
-3. **Start Celery beat (scheduler):**
+3. **Start Celery beat scheduler (in another terminal):**
    ```bash
-   celery -A gearguard beat -l info
+   cd Backend
+   celery -A gearguard beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
    ```
+
+   **Note:** Celery Beat is required for automated scheduled maintenance tasks and periodic notifications.
 
 ---
 
@@ -316,15 +383,39 @@ FRONTEND_URL = 'http://localhost:5173'  # Development
 
 ### Environment Variables
 
-Create `.env` file in Backend directory:
+Create `.env` file in Backend directory (copy from `.env.example`):
 ```env
+# Django Settings
 DEBUG=True
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=postgresql://user:pass@localhost:5432/dbname
+SECRET_KEY=your-secret-key-here-use-strong-random-string
+
+# Database (optional - defaults to SQLite)
+# DATABASE_URL=postgresql://user:pass@localhost:5432/gearguard_db
+
+# Redis (for Celery)
 REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+
+# Email Configuration (for password reset)
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
 EMAIL_HOST_USER=your-email@gmail.com
 EMAIL_HOST_PASSWORD=your-app-password
+
+# Frontend URL (for password reset links)
 FRONTEND_URL=http://localhost:5173
+
+# Social Auth (Optional - for Google OAuth)
+# GOOGLE_OAUTH_CLIENT_ID=your-google-client-id
+# GOOGLE_OAUTH_CLIENT_SECRET=your-google-client-secret
+```
+
+**To generate a secure SECRET_KEY:**
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
 ---
@@ -349,35 +440,46 @@ Production: https://yourdomain.com/api/
 | `/auth/forgot-password/` | POST | Public | Request password reset |
 | `/auth/reset-password/` | POST | Public | Confirm password reset |
 | `/auth/maintenance-history/` | GET | Token | View user's requests |
+| `/dj-rest-auth/google/` | POST | Public | Google OAuth login |
 
 ### Resource Endpoints
 
 | Endpoint | Methods | Description |
 |----------|---------|-------------|
-| `/companies/` | GET, POST, PUT, DELETE | Company management |
-| `/vendors/` | GET, POST, PUT, DELETE | Vendor management |
-| `/departments/` | GET, POST, PUT, DELETE | Department management |
-| `/employees/` | GET, POST, PUT, DELETE | Employee management |
-| `/workcenters/` | GET, POST, PUT, DELETE | Work center management |
-| `/teams/` | GET, POST, PUT, DELETE | Maintenance team management |
-| `/categories/` | GET, POST, PUT, DELETE | Equipment category management |
-| `/equipment/` | GET, POST, PUT, DELETE | Equipment management |
-| `/requests/` | GET, POST, PUT, DELETE | Maintenance request management |
-| `/scheduled/` | GET, POST, PUT, DELETE | Scheduled maintenance |
+| `/users/` | GET | List all users |
+| `/companies/` | GET, POST, PUT, PATCH, DELETE | Company management |
+| `/vendors/` | GET, POST, PUT, PATCH, DELETE | Vendor management |
+| `/departments/` | GET, POST, PUT, PATCH, DELETE | Department management |
+| `/employees/` | GET, POST, PUT, PATCH, DELETE | Employee management |
+| `/workcenters/` | GET, POST, PUT, PATCH, DELETE | Work center management |
+| `/workcenters/{id}/equipment/` | GET | Get equipment by work center |
+| `/workcenters/{id}/maintenance-stats/` | GET | Get maintenance statistics for work center |
+| `/teams/` | GET, POST, PUT, PATCH, DELETE | Maintenance team management |
+| `/teams/{id}/statistics/` | GET | Get team performance statistics |
+| `/categories/` | GET, POST, PUT, PATCH, DELETE | Equipment category management |
+| `/equipment/` | GET, POST, PUT, PATCH, DELETE | Equipment management |
+| `/equipment/{id}/scrap/` | POST | Mark equipment as scrapped |
+| `/equipment/{id}/maintenance-history/` | GET | Get equipment maintenance history |
+| `/requests/` | GET, POST, PUT, PATCH, DELETE | Maintenance request management |
+| `/requests/{id}/complete/` | POST | Complete a maintenance request |
+| `/requests/overdue/` | GET | Get overdue maintenance requests |
+| `/requests/by-priority/` | GET | Get requests grouped by priority |
+| `/scheduled/` | GET, POST, PUT, PATCH, DELETE | Scheduled maintenance |
+| `/scheduled/{id}/trigger/` | POST | Manually trigger scheduled maintenance |
 | `/dashboard/` | GET | Dashboard statistics |
-| `/calendar/` | GET | Calendar events |
+| `/calendar/` | GET | Calendar events for maintenance visualization |
 
 ### Authentication Header
-```
+```http
 Authorization: Token <your-token-here>
+Content-Type: application/json
 ```
 
 ### Complete API Documentation
 
 See detailed documentation:
-- **[AUTHENTICATION_API.md](Backend/AUTHENTICATION_API.md)** - Complete authentication API reference
 - **[PASSWORD_RESET_GUIDE.md](Backend/PASSWORD_RESET_GUIDE.md)** - Password reset implementation guide
-- **[README_AUTH.md](Backend/README_AUTH.md)** - Quick authentication guide
+- Use Django REST Framework's browsable API at `http://localhost:8000/api/` for interactive documentation
 
 ---
 
@@ -436,17 +538,12 @@ const profile = await response.json();
 #### Run All Tests
 ```bash
 cd Backend
-python manage.py test
+python manage.py test maintenance
 ```
 
-#### Test Authentication API
+#### Run Specific Test Class
 ```bash
-python test_auth_api.py
-```
-
-#### Test Password Reset
-```bash
-python test_password_reset.py
+python manage.py test maintenance.tests.TestClassName
 ```
 
 #### Manual API Testing with cURL
@@ -455,7 +552,7 @@ python test_password_reset.py
 ```bash
 curl -X POST http://localhost:8000/api/auth/register/ \
   -H "Content-Type: application/json" \
-  -d '{"username":"testuser","email":"test@example.com","password":"TestPass123!","password2":"TestPass123!"}'
+  -d '{"username":"testuser","email":"test@example.com","password":"TestPass123!","password2":"TestPass123!","first_name":"Test","last_name":"User"}'
 ```
 
 **Login:**
@@ -471,15 +568,50 @@ curl -X GET http://localhost:8000/api/auth/profile/ \
   -H "Authorization: Token YOUR_TOKEN_HERE"
 ```
 
+**Create Equipment:**
+```bash
+curl -X POST http://localhost:8000/api/equipment/ \
+  -H "Authorization: Token YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test Equipment","model":"Model-123","serial_number":"SN-123","category":1,"workcenter":1}'
+```
+
+### Testing with Django Admin
+
+1. Create a superuser:
+   ```bash
+   python manage.py createsuperuser
+   ```
+
+2. Access admin panel at `http://localhost:8000/admin/`
+
+3. Test all models and relationships through the admin interface
+
+### Frontend Testing
+
+Currently, frontend uses manual testing through the UI. To test:
+
+1. Start the backend server
+2. Start the frontend development server
+3. Navigate through all pages:
+   - Login/Register
+   - Dashboard
+   - Maintenance Requests (list & calendar view)
+   - Configuration pages (Equipment, Categories, Work Centers)
+   - Profile page
+
 ### Test Coverage
 
-The project includes comprehensive tests for:
+The project includes functionality for:
 - ✅ User authentication (registration, login, logout)
 - ✅ Password management (change, forgot, reset)
-- ✅ Profile management
+- ✅ Profile management with statistics
 - ✅ Token validation
-- ✅ Error handling
-- ✅ Security features
+- ✅ CRUD operations for all models
+- ✅ Calendar view for maintenance scheduling
+- ✅ Dashboard statistics
+- ✅ Error handling and validation
+- ✅ Protected routes
 
 ---
 
@@ -659,17 +791,32 @@ For issues, questions, or suggestions:
 
 ## 🎯 Roadmap
 
-### Upcoming Features
+### Current Features ✅
+- ✅ Token-based authentication with social auth
+- ✅ Complete CRUD for all entities
+- ✅ Calendar view for maintenance scheduling
+- ✅ Dashboard with statistics
+- ✅ Drag & drop functionality
+- ✅ Responsive design with TailwindCSS
+- ✅ Loading skeletons for better UX
+- ✅ Toast notifications
+
+### Upcoming Features 🚧
 - [ ] Real-time notifications with WebSockets
-- [ ] Mobile app (React Native)
-- [ ] Advanced analytics and reporting
+- [ ] Advanced analytics and reporting dashboards
 - [ ] Export data to Excel/PDF
 - [ ] QR code for equipment tracking
 - [ ] Barcode scanning
+- [ ] File attachments for maintenance requests
+- [ ] Email notifications for overdue maintenance
 - [ ] Integration with IoT sensors
-- [ ] Multi-language support
-- [ ] Dark mode
+- [ ] Multi-language support (i18n)
+- [ ] Dark mode theme
 - [ ] Advanced search and filters
+- [ ] Mobile responsive improvements
+- [ ] Unit and integration tests
+- [ ] Docker containerization
+- [ ] CI/CD pipeline
 
 ---
 
