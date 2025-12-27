@@ -145,7 +145,7 @@ function Maintenance() {
         {/* Display content based on view */}
 
         <div className="w-full relative">
-          {!loading && (
+          {loading && (
             <div className="w-full h-full absolute top-0 left-0 mx-auto px-6 py-6 z-50 bg-white border-t- border-t-slate-200">
               <div className="flex items-center justify-center w-full h-full">
                 <div className="text-center">

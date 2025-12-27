@@ -74,7 +74,7 @@ const updateRequestStatus = async (taskId, currentStatus, newStatus) => {
 };
 
 /* ================= COMPONENT ================= */
-export default function KanbanBoard({ setIsLoading }) {
+export default function KanbanBoard({ setLoading }) {
   const [tasks, setTasks] = useState({
     new: [],
     in_progress: [],
@@ -98,7 +98,7 @@ export default function KanbanBoard({ setIsLoading }) {
   }, []);
 
   const fetchRequests = async () => {
-    setIsLoading(true);
+    setLoading(true);
     try {
       const response = await multipleApi([
         {
@@ -118,7 +118,7 @@ export default function KanbanBoard({ setIsLoading }) {
     } catch (error) {
       console.error("Failed to fetch requests:", error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
